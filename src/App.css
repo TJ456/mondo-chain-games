@@ -1,3 +1,4 @@
+
 #root {
   width: 100%;
   min-height: 100vh;
@@ -37,4 +38,69 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* MONAD Blockchain Animation Effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
+}
+
+.card-rare {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.card-epic {
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+}
+
+.card-legendary {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) scale(1.1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.15);
+  }
+  100% {
+    transform: translateY(0px) scale(1.1);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* MONAD blockchain glow effects */
+.glassmorphism {
+  background: rgba(13, 17, 23, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom scrollbar for MONAD blockchain interfaces */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.5);
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.8);
 }

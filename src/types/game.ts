@@ -22,20 +22,32 @@ export interface Card {
   attack?: number;
   defense?: number;
   mana: number;
-  tokenId?: string; // For blockchain integration
+  monadId: string; // For Monad blockchain integration
+  onChainMetadata?: {
+    creator: string;
+    creationBlock: number;
+    evolutionStage: number;
+    battleHistory: number[];
+  };
 }
 
 export interface Player {
   id: string;
   username: string;
-  address?: string; // Wallet address
+  monadAddress: string; // Monad wallet address
   avatar: string;
   level: number;
   experience: number;
   wins: number;
   losses: number;
   cards: Card[];
-  tokens: number;
+  monad: number; // MONAD tokens balance
+  transactionHistory?: {
+    txHash: string;
+    type: 'BATTLE' | 'TRADE' | 'MINT' | 'EVOLVE';
+    timestamp: number;
+    details: string;
+  }[];
 }
 
 export interface MarketListing {
@@ -44,4 +56,36 @@ export interface MarketListing {
   price: number;
   seller: string;
   timestamp: number;
+  monadContract: string; // Monad smart contract address
+  monadTxHash?: string; // Transaction hash on Monad blockchain
+}
+
+export interface GameState {
+  isOnChain: boolean;
+  currentBlockHeight?: number;
+  lastSyncedBlock?: number;
+  pendingTransactions: number;
+  networkStatus: 'connected' | 'syncing' | 'disconnected';
+}
+
+// Monad-specific interfaces
+export interface MonadTransaction {
+  txHash: string;
+  fromAddress: string;
+  toAddress: string;
+  amount: number;
+  timestamp: number;
+  blockHeight: number;
+  status: 'pending' | 'confirmed' | 'failed';
+  type: 'transfer' | 'mint' | 'battle' | 'trade';
+}
+
+export interface MonadGameMove {
+  moveId: string;
+  playerAddress: string;
+  cardId: string;
+  moveType: 'attack' | 'defend' | 'special';
+  timestamp: number;
+  onChainSignature?: string;
+  verified: boolean;
 }

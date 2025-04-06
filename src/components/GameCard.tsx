@@ -4,6 +4,7 @@ import { Card as CardComponent } from "@/components/ui/card";
 import { Card as GameCardType, CardRarity, CardType } from "@/types/game";
 import { cn } from "@/lib/utils";
 import { generateCardImage } from '@/utils/placeholderImages';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GameCardProps {
   card: GameCardType;
@@ -44,6 +45,17 @@ const GameCard: React.FC<GameCardProps> = ({ card, onClick, className, showDetai
     ? generateCardImage(card.name, card.type, card.rarity)
     : card.image;
 
+  // Calculate win rate from battle history
+  const calculateWinRate = () => {
+    if (!card.onChainMetadata?.battleHistory || card.onChainMetadata.battleHistory.length === 0) {
+      return "No battles";
+    }
+    
+    const wins = card.onChainMetadata.battleHistory.filter(result => result === 1).length;
+    const total = card.onChainMetadata.battleHistory.length;
+    return `${Math.round((wins / total) * 100)}% (${wins}/${total})`;
+  };
+
   return (
     <CardComponent 
       className={cn(
@@ -70,6 +82,10 @@ const GameCard: React.FC<GameCardProps> = ({ card, onClick, className, showDetai
             className="absolute inset-0 bg-cover bg-center" 
             style={{ backgroundImage: `url(${imageUrl})` }}
           />
+          {/* Monad Blockchain Badge */}
+          <div className="absolute bottom-1 right-1 bg-black/60 rounded px-1 py-0.5 text-[8px] text-emerald-400 font-mono">
+            MONAD
+          </div>
         </div>
         
         {/* Card Details */}
@@ -100,12 +116,29 @@ const GameCard: React.FC<GameCardProps> = ({ card, onClick, className, showDetai
               )}
             </div>
             
-            {card.tokenId && (
-              <div className="mt-2 pt-2 border-t border-white/10 text-xs text-gray-400 flex items-center">
-                <span className="mr-1">Token:</span>
-                <span className="font-mono">{card.tokenId}</span>
-              </div>
-            )}
+            {/* Monad Blockchain Data */}
+            <div className="mt-2 pt-2 border-t border-white/10 text-xs">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-between text-emerald-400">
+                      <span className="font-mono truncate">{card.monadId}</span>
+                      <div className="h-3 w-3 bg-emerald-500/30 rounded-full flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black/80 border-emerald-500/50">
+                    <div className="text-xs font-mono text-emerald-400">
+                      <div>Created at block: {card.onChainMetadata?.creationBlock || 'Unknown'}</div>
+                      <div>Evolution: Stage {card.onChainMetadata?.evolutionStage || 1}</div>
+                      <div>Win rate: {calculateWinRate()}</div>
+                      <div>Creator: {card.onChainMetadata?.creator || 'Unknown'}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </>
         )}
       </div>
