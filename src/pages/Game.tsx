@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card } from "@/components/ui/card";
@@ -27,7 +26,6 @@ const Game = () => {
   const [pendingMoves, setPendingMoves] = useState<MonadGameMove[]>([]);
   const [isOnChain, setIsOnChain] = useState(false);
   
-  // Update on-chain status based on Monad network status
   useEffect(() => {
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
   }, []);
@@ -58,7 +56,6 @@ const Game = () => {
       return;
     }
     
-    // Create on-chain move
     const newMove: MonadGameMove = {
       moveId: `move-${Date.now()}`,
       playerAddress: currentPlayer.monadAddress,
@@ -68,10 +65,8 @@ const Game = () => {
       verified: false
     };
     
-    // Add to pending moves
     setPendingMoves(prev => [...prev, newMove]);
     
-    // Show on-chain transaction toast
     toast.loading("Submitting move to MONAD blockchain...", {
       id: newMove.moveId,
       duration: 2000,
@@ -80,7 +75,6 @@ const Game = () => {
     setSelectedCard(card);
     setPlayerMana(prev => prev - card.mana);
     
-    // Apply card effects
     let logEntry = `You played ${card.name}.`;
     
     if (card.attack) {
@@ -94,14 +88,11 @@ const Game = () => {
       logEntry += ` Gained ${card.defense} health.`;
     }
     
-    // Remove card from deck
     setPlayerDeck(prev => prev.filter(c => c.id !== card.id));
     
     setBattleLog([...battleLog, logEntry]);
     
-    // Simulate blockchain confirmation
     setTimeout(() => {
-      // Update move status to verified
       setPendingMoves(prev => 
         prev.map(move => 
           move.moveId === newMove.moveId 
@@ -115,13 +106,11 @@ const Game = () => {
         description: `Block: ${monadGameState.currentBlockHeight! + 1}`,
       });
       
-      // Opponent's turn
       if (opponentHealth <= 0) {
         endGame(true);
         return;
       }
       
-      // Simple AI - play a random card if possible
       const playableCards = opponentCards.filter(c => c.mana <= opponentMana);
       
       if (playableCards.length > 0) {
@@ -158,7 +147,6 @@ const Game = () => {
   const endGame = (playerWon: boolean) => {
     setGameStatus('end');
     
-    // Finalize game result on blockchain
     toast.loading("Recording game result on MONAD blockchain...", { 
       id: "game-result",
       duration: 3000,
@@ -218,7 +206,6 @@ const Game = () => {
         </h1>
         
         <div className="grid md:grid-cols-3 gap-8">
-          {/* Game Board */}
           <div className="md:col-span-2">
             <Card className="glassmorphism border-emerald-500/30 h-[600px] flex flex-col">
               {gameStatus === 'waiting' ? (
@@ -244,7 +231,6 @@ const Game = () => {
                 </div>
               ) : (
                 <div className="flex flex-col h-full p-6">
-                  {/* Opponent Info */}
                   <div className="flex justify-between items-center mb-4">
                     <div>
                       <div className="text-lg font-bold text-white">Opponent</div>
@@ -266,14 +252,13 @@ const Game = () => {
                     </div>
                   </div>
                   
-                  {/* Opponent Cards */}
                   <div className="flex justify-center space-x-4 mb-8">
                     {opponentCards.map(card => (
                       <div key={card.id} className="transform hover:-translate-y-2 transition-transform">
                         <Card className="w-20 h-28 bg-gray-800 border-gray-700">
                           <div className="h-full flex items-center justify-center text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                              <path fillRule="evenodd" d="M18 10a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                             </svg>
                           </div>
                         </Card>
@@ -281,7 +266,6 @@ const Game = () => {
                     ))}
                   </div>
                   
-                  {/* Battle Area */}
                   <div className="flex-1 relative bg-black/30 rounded-lg mb-8 border border-emerald-500/30 flex items-center justify-center">
                     {selectedCard ? (
                       <div className="animate-float">
@@ -294,7 +278,6 @@ const Game = () => {
                       </div>
                     )}
                     
-                    {/* Pending Transaction Indicator */}
                     {pendingMoves.length > 0 && pendingMoves.some(move => !move.verified) && (
                       <div className="absolute top-4 right-4">
                         <TooltipProvider>
@@ -314,7 +297,6 @@ const Game = () => {
                     )}
                   </div>
                   
-                  {/* Player Cards */}
                   <div className="flex justify-center space-x-4 mb-4">
                     {playerDeck.map(card => (
                       <div key={card.id} className="transform hover:-translate-y-2 transition-transform">
@@ -325,7 +307,6 @@ const Game = () => {
                     ))}
                   </div>
                   
-                  {/* Player Info */}
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="text-lg font-bold text-white flex items-center">
@@ -356,12 +337,9 @@ const Game = () => {
             </Card>
           </div>
           
-          {/* Battle Log & Blockchain Status */}
           <div className="space-y-8">
-            {/* Monad Network Status */}
             <MonadStatus />
             
-            {/* Battle Log */}
             <Card className="glassmorphism border-emerald-500/30 h-[320px] flex flex-col">
               <div className="p-4 border-b border-white/10">
                 <h2 className="text-lg font-bold text-white">Battle Log</h2>

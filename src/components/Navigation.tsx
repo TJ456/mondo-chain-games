@@ -14,7 +14,7 @@ const Navigation: React.FC = () => {
     setIsWalletConnected(true);
     toast({
       title: "Wallet Connected",
-      description: `Connected to ${currentPlayer.address}`,
+      description: `Connected to ${currentPlayer.monadAddress}`,
     });
   };
 
@@ -42,7 +42,7 @@ const Navigation: React.FC = () => {
             <div className="h-4 w-px bg-gray-600"></div>
             <div className="flex items-center space-x-2">
               <div className="text-mondo-cyan font-medium">
-                {currentPlayer.tokens} MONDO
+                {currentPlayer.monad} MONDO
               </div>
               {isWalletConnected ? (
                 <Button 
@@ -50,7 +50,7 @@ const Navigation: React.FC = () => {
                   className="border-mondo-blue text-mondo-blue hover:bg-mondo-blue/20"
                   onClick={() => navigate("/profile")}
                 >
-                  {currentPlayer.address?.substring(0, 6)}...{currentPlayer.address?.substring(currentPlayer.address.length - 4)}
+                  {currentPlayer.monadAddress?.substring(0, 6)}...{currentPlayer.monadAddress?.substring(currentPlayer.monadAddress.length - 4)}
                 </Button>
               ) : (
                 <Button 
