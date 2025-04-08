@@ -25,13 +25,29 @@ const Game = () => {
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [pendingMoves, setPendingMoves] = useState<MonadGameMove[]>([]);
   const [isOnChain, setIsOnChain] = useState(false);
-  
+  const [currentTurn, setCurrentTurn] = useState<'player' | 'opponent'>('player');
+  const [fatigueDamage, setFatigueDamage] = useState(1);
+
   useEffect(() => {
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
   }, []);
-  
+
+  useEffect(() => {
+    if (gameStatus !== 'playing') return;
+    
+    if (currentTurn === 'player') {
+      const playableCards = playerDeck.filter(card => card.mana <= playerMana);
+      if (playableCards.length === 0 && playerDeck.length > 0) {
+        handleNoPlayableCards('player', 'No playable cards available. Turn passed to opponent.');
+      } else if (playerDeck.length === 0) {
+        handleFatigue('player');
+      }
+    }
+  }, [currentTurn, playerDeck, playerMana, gameStatus]);
+
   const startGame = () => {
     setGameStatus('playing');
+    setCurrentTurn('player');
     setBattleLog([...battleLog, 'Battle has begun on the MONAD blockchain! Your turn.']);
     
     uiToast({
@@ -44,9 +60,99 @@ const Game = () => {
       duration: 3000,
     });
   };
-  
-  const playCard = (card: GameCardType) => {
+
+  const handleNoPlayableCards = (player: 'player' | 'opponent', message: string) => {
+    const newLogs = [...battleLog, message];
+    setBattleLog(newLogs);
+    
+    if (player === 'player') {
+      setCurrentTurn('opponent');
+      handleOpponentTurn();
+    } else {
+      setCurrentTurn('player');
+    }
+  };
+
+  const handleFatigue = (player: 'player' | 'opponent') => {
+    const damage = fatigueDamage;
+    const fatigueMessage = `${player === 'player' ? 'You are' : 'Opponent is'} out of cards! ${damage} fatigue damage applied.`;
+    
+    if (player === 'player') {
+      setPlayerHealth(prev => Math.max(0, prev - damage));
+      setBattleLog([...battleLog, fatigueMessage]);
+      
+      if (playerHealth - damage <= 0) {
+        endGame(false);
+        return;
+      }
+      
+      setCurrentTurn('opponent');
+      handleOpponentTurn();
+    } else {
+      setOpponentHealth(prev => Math.max(0, prev - damage));
+      setBattleLog([...battleLog, fatigueMessage]);
+      
+      if (opponentHealth - damage <= 0) {
+        endGame(true);
+        return;
+      }
+      
+      setCurrentTurn('player');
+    }
+    
+    setFatigueDamage(prev => prev + 1);
+  };
+
+  const handleOpponentTurn = () => {
     if (gameStatus !== 'playing') return;
+    
+    const playableCards = opponentCards.filter(c => c.mana <= opponentMana);
+    
+    if (playableCards.length > 0) {
+      const randomCard = playableCards[Math.floor(Math.random() * playableCards.length)];
+      setOpponentMana(prev => prev - randomCard.mana);
+      
+      let oppLogEntry = `Opponent played ${randomCard.name}.`;
+      
+      if (randomCard.attack) {
+        const damage = randomCard.attack;
+        setPlayerHealth(prev => Math.max(0, prev - damage));
+        oppLogEntry += ` Dealt ${damage} damage to you.`;
+      }
+      
+      if (randomCard.defense) {
+        setOpponentHealth(prev => Math.min(30, prev + randomCard.defense));
+        oppLogEntry += ` Opponent gained ${randomCard.defense} health.`;
+      }
+      
+      setOpponentCards(prev => prev.filter(c => c.id !== randomCard.id));
+      setBattleLog(prev => [...prev, oppLogEntry]);
+      
+      if (playerHealth <= randomCard.attack!) {
+        endGame(false);
+        return;
+      }
+      
+      setCurrentTurn('player');
+      
+      const playerPlayableCards = playerDeck.filter(card => card.mana <= playerMana);
+      if (playerPlayableCards.length === 0) {
+        if (playerDeck.length === 0) {
+          setTimeout(() => handleFatigue('player'), 1000);
+        } else {
+          setTimeout(() => handleNoPlayableCards('player', 'No playable cards available. Turn passed to opponent.'), 1000);
+        }
+      }
+    } else if (opponentCards.length === 0) {
+      handleFatigue('opponent');
+    } else {
+      handleNoPlayableCards('opponent', "Opponent has no playable cards. Your turn.");
+      setCurrentTurn('player');
+    }
+  };
+
+  const playCard = (card: GameCardType) => {
+    if (gameStatus !== 'playing' || currentTurn !== 'player') return;
     if (playerMana < card.mana) {
       uiToast({
         title: "Not enough mana",
@@ -90,7 +196,7 @@ const Game = () => {
     
     setPlayerDeck(prev => prev.filter(c => c.id !== card.id));
     
-    setBattleLog([...battleLog, logEntry]);
+    setBattleLog(prev => [...prev, logEntry]);
     
     setTimeout(() => {
       setPendingMoves(prev => 
@@ -111,39 +217,14 @@ const Game = () => {
         return;
       }
       
-      const playableCards = opponentCards.filter(c => c.mana <= opponentMana);
+      setCurrentTurn('opponent');
       
-      if (playableCards.length > 0) {
-        const randomCard = playableCards[Math.floor(Math.random() * playableCards.length)];
-        setOpponentMana(prev => prev - randomCard.mana);
-        
-        let oppLogEntry = `Opponent played ${randomCard.name}.`;
-        
-        if (randomCard.attack) {
-          const damage = randomCard.attack;
-          setPlayerHealth(prev => Math.max(0, prev - damage));
-          oppLogEntry += ` Dealt ${damage} damage to you.`;
-        }
-        
-        if (randomCard.defense) {
-          setOpponentHealth(prev => Math.min(30, prev + randomCard.defense));
-          oppLogEntry += ` Opponent gained ${randomCard.defense} health.`;
-        }
-        
-        setOpponentCards(prev => prev.filter(c => c.id !== randomCard.id));
-        setBattleLog([...battleLog, logEntry, oppLogEntry]);
-        
-        if (playerHealth <= 0) {
-          endGame(false);
-        }
-      } else {
-        setBattleLog([...battleLog, logEntry, "Opponent has no playable cards. Your turn."]);
-      }
+      setTimeout(handleOpponentTurn, 1000);
       
       setSelectedCard(null);
     }, 2000);
   };
-  
+
   const endGame = (playerWon: boolean) => {
     setGameStatus('end');
     
@@ -159,13 +240,13 @@ const Game = () => {
       });
       
       if (playerWon) {
-        setBattleLog([...battleLog, "Victory! You've won the battle. 50 MONAD tokens awarded and recorded on-chain."]);
+        setBattleLog(prev => [...prev, "Victory! You've won the battle. 50 MONAD tokens awarded and recorded on-chain."]);
         uiToast({
           title: "Victory!",
           description: "You've won the battle and earned 50 MONAD tokens!",
         });
       } else {
-        setBattleLog([...battleLog, "Defeat! Better luck next time. Battle result recorded on MONAD blockchain."]);
+        setBattleLog(prev => [...prev, "Defeat! Better luck next time. Battle result recorded on MONAD blockchain."]);
         uiToast({
           title: "Defeat!",
           description: "You've lost the battle. Try again with a different strategy.",
@@ -174,7 +255,7 @@ const Game = () => {
       }
     }, 3000);
   };
-  
+
   const resetGame = () => {
     setPlayerDeck(currentPlayer.cards);
     setOpponentCards(cards.filter(card => !currentPlayer.cards.includes(card)).slice(0, 3));
@@ -186,8 +267,10 @@ const Game = () => {
     setOpponentHealth(20);
     setBattleLog([]);
     setPendingMoves([]);
+    setCurrentTurn('player');
+    setFatigueDamage(1);
   };
-  
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
