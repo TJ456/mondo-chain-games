@@ -4,10 +4,10 @@ import { Card } from "@/components/ui/card";
 import GameCard from '@/components/GameCard';
 import MonadStatus from '@/components/MonadStatus';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { toast } from "sonner";
 import { cards, currentPlayer, monadGameState } from '@/data/gameData';
-import { Card as GameCardType, MonadGameMove } from '@/types/game';
+import { Card as GameCardType, MonadGameMove, CardType } from '@/types/game';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Game = () => {
@@ -60,7 +60,7 @@ const Game = () => {
       moveId: `move-${Date.now()}`,
       playerAddress: currentPlayer.monadAddress,
       cardId: card.id,
-      moveType: card.type === 'ATTACK' ? 'attack' : (card.type === 'DEFENSE' ? 'defend' : 'special'),
+      moveType: card.type === CardType.ATTACK ? 'attack' : (card.type === CardType.DEFENSE ? 'defend' : 'special'),
       timestamp: Date.now(),
       verified: false
     };
