@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card } from "@/components/ui/card";
 import GameCard from '@/components/GameCard';
@@ -27,28 +27,37 @@ const Game = () => {
   const [isOnChain, setIsOnChain] = useState(false);
   const [currentTurn, setCurrentTurn] = useState<'player' | 'opponent'>('player');
   const [fatigueDamage, setFatigueDamage] = useState(1);
+  // New state for tracking consecutive skips
+  const [consecutiveSkips, setConsecutiveSkips] = useState(0);
 
   useEffect(() => {
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
+  }, []);
+
+  // Memoized card filtering for better performance
+  const getPlayableCards = useCallback((cards: GameCardType[], mana: number) => {
+    return cards.filter(card => card.mana <= mana);
   }, []);
 
   useEffect(() => {
     if (gameStatus !== 'playing') return;
     
     if (currentTurn === 'player') {
-      const playableCards = playerDeck.filter(card => card.mana <= playerMana);
+      const playableCards = getPlayableCards(playerDeck, playerMana);
       if (playableCards.length === 0 && playerDeck.length > 0) {
         handleNoPlayableCards('player', 'No playable cards available. Turn passed to opponent.');
       } else if (playerDeck.length === 0) {
         handleFatigue('player');
       }
     }
-  }, [currentTurn, playerDeck, playerMana, gameStatus]);
+  }, [currentTurn, playerDeck, playerMana, gameStatus, getPlayableCards]);
 
+  // Improved game initialization
   const startGame = () => {
+    resetGame(); // Reset all state first
     setGameStatus('playing');
     setCurrentTurn('player');
-    setBattleLog([...battleLog, 'Battle has begun on the MONAD blockchain! Your turn.']);
+    setBattleLog(['Battle has begun on the MONAD blockchain! Your turn.']);
     
     uiToast({
       title: "Game Started",
@@ -61,171 +70,228 @@ const Game = () => {
     });
   };
 
+  // Enhanced turn handling with proper cleanup
+  const endTurn = useCallback((nextPlayer: 'player' | 'opponent') => {
+    setCurrentTurn(nextPlayer);
+    
+    // Reset mana at turn start (not end) for clarity
+    if (nextPlayer === 'player') {
+      setPlayerMana(prev => Math.min(10, prev + 1)); // Gain 1 mana per turn, max 10
+    } else {
+      setOpponentMana(prev => Math.min(10, prev + 1));
+    }
+
+    // Clear any pending selections
+    setSelectedCard(null);
+  }, []);
+
   const handleNoPlayableCards = (player: 'player' | 'opponent', message: string) => {
     const newLogs = [...battleLog, message];
     setBattleLog(newLogs);
     
     if (player === 'player') {
-      setCurrentTurn('opponent');
+      endTurn('opponent');
       handleOpponentTurn();
     } else {
-      setCurrentTurn('player');
+      endTurn('player');
     }
   };
 
-  const handleFatigue = (player: 'player' | 'opponent') => {
+  // Enhanced fatigue system
+  const handleFatigue = (target: 'player' | 'opponent') => {
     const damage = fatigueDamage;
-    const fatigueMessage = `${player === 'player' ? 'You are' : 'Opponent is'} out of cards! ${damage} fatigue damage applied.`;
+    const message = `${target === 'player' ? 'You take' : 'Opponent takes'} ${damage} fatigue damage.`;
     
-    if (player === 'player') {
+    if (target === 'player') {
       setPlayerHealth(prev => Math.max(0, prev - damage));
-      setBattleLog([...battleLog, fatigueMessage]);
-      
       if (playerHealth - damage <= 0) {
         endGame(false);
         return;
       }
-      
-      setCurrentTurn('opponent');
-      handleOpponentTurn();
     } else {
       setOpponentHealth(prev => Math.max(0, prev - damage));
-      setBattleLog([...battleLog, fatigueMessage]);
-      
       if (opponentHealth - damage <= 0) {
         endGame(true);
         return;
       }
-      
-      setCurrentTurn('player');
     }
-    
+
+    setBattleLog(prev => [...prev, message]);
     setFatigueDamage(prev => prev + 1);
+    setConsecutiveSkips(prev => prev + 1);
+
+    // Check for draw condition
+    if (consecutiveSkips >= 1) {
+      endGame(null); // Draw
+      return;
+    }
+
+    // Continue turn rotation
+    endTurn(target === 'player' ? 'opponent' : 'player');
+    
+    if (target === 'player') {
+      setTimeout(handleOpponentTurn, 1000);
+    }
   };
 
-  const handleOpponentTurn = () => {
+  // Improved opponent AI
+  const handleOpponentTurn = useCallback(() => {
     if (gameStatus !== 'playing') return;
-    
-    const playableCards = opponentCards.filter(c => c.mana <= opponentMana);
-    
+
+    const playableCards = getPlayableCards(opponentCards, opponentMana);
+
     if (playableCards.length > 0) {
-      const randomCard = playableCards[Math.floor(Math.random() * playableCards.length)];
-      setOpponentMana(prev => prev - randomCard.mana);
-      
-      let oppLogEntry = `Opponent played ${randomCard.name}.`;
-      
-      if (randomCard.attack) {
-        const damage = randomCard.attack;
-        setPlayerHealth(prev => Math.max(0, prev - damage));
-        oppLogEntry += ` Dealt ${damage} damage to you.`;
+      // Smart opponent: prioritize attacks when ahead, defense when low
+      const shouldDefend = opponentHealth < 10;
+      const preferredCards = shouldDefend 
+        ? playableCards.filter(c => c.defense > 0)
+        : playableCards.filter(c => c.attack > 0);
+
+      const cardToPlay = preferredCards.length > 0 
+        ? preferredCards[Math.floor(Math.random() * preferredCards.length)]
+        : playableCards[0];
+
+      // Process opponent move
+      setOpponentMana(prev => prev - cardToPlay.mana);
+      setOpponentCards(prev => prev.filter(c => c.id !== cardToPlay.id));
+
+      let logEntry = `Opponent played ${cardToPlay.name}.`;
+      let newPlayerHealth = playerHealth;
+      let newOpponentHealth = opponentHealth;
+
+      if (cardToPlay.attack) {
+        newPlayerHealth = Math.max(0, playerHealth - cardToPlay.attack);
+        logEntry += ` Dealt ${cardToPlay.attack} damage.`;
       }
-      
-      if (randomCard.defense) {
-        setOpponentHealth(prev => Math.min(30, prev + randomCard.defense));
-        oppLogEntry += ` Opponent gained ${randomCard.defense} health.`;
+
+      if (cardToPlay.defense) {
+        newOpponentHealth = Math.min(30, opponentHealth + cardToPlay.defense);
+        logEntry += ` Gained ${cardToPlay.defense} health.`;
       }
-      
-      setOpponentCards(prev => prev.filter(c => c.id !== randomCard.id));
-      setBattleLog(prev => [...prev, oppLogEntry]);
-      
-      if (playerHealth <= randomCard.attack!) {
+
+      setPlayerHealth(newPlayerHealth);
+      setOpponentHealth(newOpponentHealth);
+      setBattleLog(prev => [...prev, logEntry]);
+
+      // Check for defeat
+      if (newPlayerHealth <= 0) {
         endGame(false);
         return;
       }
-      
-      setCurrentTurn('player');
-      
-      const playerPlayableCards = playerDeck.filter(card => card.mana <= playerMana);
-      if (playerPlayableCards.length === 0) {
+
+      // Pass turn back to player
+      endTurn('player');
+
+      // Check if player can actually play next turn
+      const playerCanPlay = getPlayableCards(playerDeck, playerMana + 1).length > 0;
+      if (!playerCanPlay) {
         if (playerDeck.length === 0) {
           setTimeout(() => handleFatigue('player'), 1000);
         } else {
-          setTimeout(() => handleNoPlayableCards('player', 'No playable cards available. Turn passed to opponent.'), 1000);
+          setTimeout(() => {
+            setBattleLog(prev => [...prev, "No playable cards - turn passed."]);
+            endTurn('opponent');
+            setTimeout(handleOpponentTurn, 1000);
+          }, 1000);
         }
       }
+
     } else if (opponentCards.length === 0) {
       handleFatigue('opponent');
     } else {
-      handleNoPlayableCards('opponent', "Opponent has no playable cards. Your turn.");
-      setCurrentTurn('player');
+      setBattleLog(prev => [...prev, "Opponent passes (no playable cards)"]);
+      endTurn('player');
     }
-  };
+  }, [gameStatus, opponentCards, opponentMana, playerDeck, playerMana, opponentHealth, playerHealth, endTurn, getPlayableCards]);
 
+  // Robust card playing logic
   const playCard = (card: GameCardType) => {
-    if (gameStatus !== 'playing' || currentTurn !== 'player') return;
-    if (playerMana < card.mana) {
-      uiToast({
-        title: "Not enough mana",
-        description: `You need ${card.mana} mana to play this card.`,
-        variant: "destructive",
-      });
+    if (gameStatus !== 'playing' || currentTurn !== 'player') {
+      toast.warning("Not your turn!");
       return;
     }
-    
+
+    if (playerMana < card.mana) {
+      toast.warning(`Not enough mana (Need ${card.mana}, have ${playerMana})`);
+      return;
+    }
+
+    // Create move record
     const newMove: MonadGameMove = {
       moveId: `move-${Date.now()}`,
       playerAddress: currentPlayer.monadAddress,
       cardId: card.id,
-      moveType: card.type === CardType.ATTACK ? 'attack' : (card.type === CardType.DEFENSE ? 'defend' : 'special'),
+      moveType: card.type.toLowerCase() as 'attack' | 'defend' | 'special',
       timestamp: Date.now(),
       verified: false
     };
-    
+
+    // Process card effects immediately (optimistic update)
+    setPlayerMana(prev => prev - card.mana);
+    setPlayerDeck(prev => prev.filter(c => c.id !== card.id));
+    setSelectedCard(card);
+
+    let logEntry = `You played ${card.name}.`;
+    let opponentNewHealth = opponentHealth;
+    let playerNewHealth = playerHealth;
+
+    if (card.attack) {
+      opponentNewHealth = Math.max(0, opponentHealth - card.attack);
+      logEntry += ` Dealt ${card.attack} damage.`;
+    }
+
+    if (card.defense) {
+      playerNewHealth = Math.min(30, playerHealth + card.defense);
+      logEntry += ` Gained ${card.defense} health.`;
+    }
+
+    // Special effects handler
+    if (card.specialEffect) {
+      logEntry += ` ${card.specialEffect.description}`;
+      // Implement special effects logic here
+    }
+
+    // Update state in single batch
+    setOpponentHealth(opponentNewHealth);
+    setPlayerHealth(playerNewHealth);
+    setBattleLog(prev => [...prev, logEntry]);
     setPendingMoves(prev => [...prev, newMove]);
     
     toast.loading("Submitting move to MONAD blockchain...", {
       id: newMove.moveId,
       duration: 2000,
     });
-    
-    setSelectedCard(card);
-    setPlayerMana(prev => prev - card.mana);
-    
-    let logEntry = `You played ${card.name}.`;
-    
-    if (card.attack) {
-      const damage = card.attack;
-      setOpponentHealth(prev => Math.max(0, prev - damage));
-      logEntry += ` Dealt ${damage} damage to opponent.`;
-    }
-    
-    if (card.defense) {
-      setPlayerHealth(prev => Math.min(30, prev + card.defense));
-      logEntry += ` Gained ${card.defense} health.`;
-    }
-    
-    setPlayerDeck(prev => prev.filter(c => c.id !== card.id));
-    
-    setBattleLog(prev => [...prev, logEntry]);
-    
+
+    // Simulate blockchain confirmation
     setTimeout(() => {
       setPendingMoves(prev => 
-        prev.map(move => 
-          move.moveId === newMove.moveId 
-            ? { ...move, verified: true, onChainSignature: `0x${Math.random().toString(16).slice(2, 10)}` } 
-            : move
-        )
+        prev.map(m => m.moveId === newMove.moveId ? { 
+          ...m, 
+          verified: true,
+          onChainSignature: `0x${Math.random().toString(16).slice(2, 10)}` 
+        } : m)
       );
       
       toast.success("Move confirmed on-chain", {
         id: newMove.moveId,
         description: `Block: ${monadGameState.currentBlockHeight! + 1}`,
       });
-      
-      if (opponentHealth <= 0) {
+
+      // Check for victory condition
+      if (opponentNewHealth <= 0) {
         endGame(true);
         return;
       }
-      
-      setCurrentTurn('opponent');
-      
-      setTimeout(handleOpponentTurn, 1000);
-      
-      setSelectedCard(null);
-    }, 2000);
+
+      // Pass turn to opponent
+      endTurn('opponent');
+      setTimeout(handleOpponentTurn, 1000); // Add slight delay for realism
+
+    }, isOnChain ? 2000 : 500); // Faster for demo mode
   };
 
-  const endGame = (playerWon: boolean) => {
+  // Improved end game handler
+  const endGame = (playerWon: boolean | null) => {
     setGameStatus('end');
     
     toast.loading("Recording game result on MONAD blockchain...", { 
@@ -239,20 +305,29 @@ const Game = () => {
         description: `Block: ${monadGameState.currentBlockHeight! + 2}`,
       });
       
-      if (playerWon) {
-        setBattleLog(prev => [...prev, "Victory! You've won the battle. 50 MONAD tokens awarded and recorded on-chain."]);
+      let resultMessage = "";
+      if (playerWon === true) {
+        resultMessage = "Victory! You've won the battle. 50 MONAD tokens awarded and recorded on-chain.";
         uiToast({
           title: "Victory!",
           description: "You've won the battle and earned 50 MONAD tokens!",
         });
-      } else {
-        setBattleLog(prev => [...prev, "Defeat! Better luck next time. Battle result recorded on MONAD blockchain."]);
+      } else if (playerWon === false) {
+        resultMessage = "Defeat! Better luck next time. Battle result recorded on MONAD blockchain.";
         uiToast({
           title: "Defeat!",
           description: "You've lost the battle. Try again with a different strategy.",
           variant: "destructive",
         });
+      } else {
+        resultMessage = "Draw! Both players exhausted. The game ends in a tie.";
+        uiToast({
+          title: "Draw!",
+          description: "The game ended in a tie. No winner declared.",
+        });
       }
+      
+      setBattleLog(prev => [...prev, resultMessage]);
     }, 3000);
   };
 
@@ -269,6 +344,7 @@ const Game = () => {
     setPendingMoves([]);
     setCurrentTurn('player');
     setFatigueDamage(1);
+    setConsecutiveSkips(0);
   };
 
   return (
