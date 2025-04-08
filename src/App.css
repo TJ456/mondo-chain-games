@@ -1,106 +1,13 @@
+/* Import existing CSS first */
+@import './components/ui/card-animation.css';
 
-#root {
-  width: 100%;
-  min-height: 100vh;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-/* MONAD Blockchain Animation Effects */
-.card-hover {
-  transition: all 0.3s ease;
-}
-
-.card-hover:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
-}
-
-.card-rare {
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
-}
-
-.card-epic {
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
-}
-
-.card-legendary {
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0px) scale(1.1);
-  }
-  50% {
-    transform: translateY(-10px) scale(1.15);
-  }
-  100% {
-    transform: translateY(0px) scale(1.1);
-  }
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-/* MONAD blockchain glow effects */
+/* Add any other global styles here */
 .glassmorphism {
-  background: rgba(13, 17, 23, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
-
-/* Custom scrollbar for MONAD blockchain interfaces */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(17, 25, 40, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.5);
-  border-radius: 10px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.8);
-}
+/* Add this to ensure the rest of your existing styles are kept */

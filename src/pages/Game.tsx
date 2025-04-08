@@ -3,11 +3,12 @@ import Navigation from '@/components/Navigation';
 import { Card } from "@/components/ui/card";
 import GameCard from '@/components/GameCard';
 import MonadStatus from '@/components/MonadStatus';
+import ShardManager from '@/components/ShardManager';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from "sonner";
 import { cards, currentPlayer, monadGameState } from '@/data/gameData';
-import { Card as GameCardType, MonadGameMove, CardType } from '@/types/game';
+import { Card as GameCardType, MonadGameMove, CardType, AIDifficultyTier, TierRequirement, Player as PlayerType } from '@/types/game';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Game = () => {
@@ -27,14 +28,18 @@ const Game = () => {
   const [isOnChain, setIsOnChain] = useState(false);
   const [currentTurn, setCurrentTurn] = useState<'player' | 'opponent'>('player');
   const [fatigueDamage, setFatigueDamage] = useState(1);
-  // New state for tracking consecutive skips
   const [consecutiveSkips, setConsecutiveSkips] = useState(0);
+  const [playerData, setPlayerData] = useState<PlayerType>({
+    ...currentPlayer,
+    shards: 5,
+    dailyTrialsRemaining: 3
+  });
+  const [aiDifficulty, setAiDifficulty] = useState<AIDifficultyTier>(AIDifficultyTier.NOVICE);
 
   useEffect(() => {
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
   }, []);
 
-  // Memoized card filtering for better performance
   const getPlayableCards = useCallback((cards: GameCardType[], mana: number) => {
     return cards.filter(card => card.mana <= mana);
   }, []);
@@ -52,9 +57,8 @@ const Game = () => {
     }
   }, [currentTurn, playerDeck, playerMana, gameStatus, getPlayableCards]);
 
-  // Improved game initialization
   const startGame = () => {
-    resetGame(); // Reset all state first
+    resetGame();
     setGameStatus('playing');
     setCurrentTurn('player');
     setBattleLog(['Battle has begun on the MONAD blockchain! Your turn.']);
@@ -70,18 +74,15 @@ const Game = () => {
     });
   };
 
-  // Enhanced turn handling with proper cleanup
   const endTurn = useCallback((nextPlayer: 'player' | 'opponent') => {
     setCurrentTurn(nextPlayer);
     
-    // Reset mana at turn start (not end) for clarity
     if (nextPlayer === 'player') {
-      setPlayerMana(prev => Math.min(10, prev + 1)); // Gain 1 mana per turn, max 10
+      setPlayerMana(prev => Math.min(10, prev + 1));
     } else {
       setOpponentMana(prev => Math.min(10, prev + 1));
     }
 
-    // Clear any pending selections
     setSelectedCard(null);
   }, []);
 
@@ -97,7 +98,6 @@ const Game = () => {
     }
   };
 
-  // Enhanced fatigue system
   const handleFatigue = (target: 'player' | 'opponent') => {
     const damage = fatigueDamage;
     const message = `${target === 'player' ? 'You take' : 'Opponent takes'} ${damage} fatigue damage.`;
@@ -120,13 +120,11 @@ const Game = () => {
     setFatigueDamage(prev => prev + 1);
     setConsecutiveSkips(prev => prev + 1);
 
-    // Check for draw condition
     if (consecutiveSkips >= 1) {
-      endGame(null); // Draw
+      endGame(null);
       return;
     }
 
-    // Continue turn rotation
     endTurn(target === 'player' ? 'opponent' : 'player');
     
     if (target === 'player') {
@@ -134,14 +132,12 @@ const Game = () => {
     }
   };
 
-  // Improved opponent AI
   const handleOpponentTurn = useCallback(() => {
     if (gameStatus !== 'playing') return;
 
     const playableCards = getPlayableCards(opponentCards, opponentMana);
 
     if (playableCards.length > 0) {
-      // Smart opponent: prioritize attacks when ahead, defense when low
       const shouldDefend = opponentHealth < 10;
       const preferredCards = shouldDefend 
         ? playableCards.filter(c => c.defense > 0)
@@ -151,7 +147,6 @@ const Game = () => {
         ? preferredCards[Math.floor(Math.random() * preferredCards.length)]
         : playableCards[0];
 
-      // Process opponent move
       setOpponentMana(prev => prev - cardToPlay.mana);
       setOpponentCards(prev => prev.filter(c => c.id !== cardToPlay.id));
 
@@ -173,16 +168,13 @@ const Game = () => {
       setOpponentHealth(newOpponentHealth);
       setBattleLog(prev => [...prev, logEntry]);
 
-      // Check for defeat
       if (newPlayerHealth <= 0) {
         endGame(false);
         return;
       }
 
-      // Pass turn back to player
       endTurn('player');
 
-      // Check if player can actually play next turn
       const playerCanPlay = getPlayableCards(playerDeck, playerMana + 1).length > 0;
       if (!playerCanPlay) {
         if (playerDeck.length === 0) {
@@ -204,7 +196,6 @@ const Game = () => {
     }
   }, [gameStatus, opponentCards, opponentMana, playerDeck, playerMana, opponentHealth, playerHealth, endTurn, getPlayableCards]);
 
-  // Robust card playing logic
   const playCard = (card: GameCardType) => {
     if (gameStatus !== 'playing' || currentTurn !== 'player') {
       toast.warning("Not your turn!");
@@ -216,7 +207,6 @@ const Game = () => {
       return;
     }
 
-    // Create move record
     const newMove: MonadGameMove = {
       moveId: `move-${Date.now()}`,
       playerAddress: currentPlayer.monadAddress,
@@ -226,7 +216,6 @@ const Game = () => {
       verified: false
     };
 
-    // Process card effects immediately (optimistic update)
     setPlayerMana(prev => prev - card.mana);
     setPlayerDeck(prev => prev.filter(c => c.id !== card.id));
     setSelectedCard(card);
@@ -245,13 +234,11 @@ const Game = () => {
       logEntry += ` Gained ${card.defense} health.`;
     }
 
-    // Special effects handler
     if (card.specialEffect) {
       logEntry += ` ${card.specialEffect.description}`;
       // Implement special effects logic here
     }
 
-    // Update state in single batch
     setOpponentHealth(opponentNewHealth);
     setPlayerHealth(playerNewHealth);
     setBattleLog(prev => [...prev, logEntry]);
@@ -262,7 +249,6 @@ const Game = () => {
       duration: 2000,
     });
 
-    // Simulate blockchain confirmation
     setTimeout(() => {
       setPendingMoves(prev => 
         prev.map(m => m.moveId === newMove.moveId ? { 
@@ -277,20 +263,48 @@ const Game = () => {
         description: `Block: ${monadGameState.currentBlockHeight! + 1}`,
       });
 
-      // Check for victory condition
       if (opponentNewHealth <= 0) {
         endGame(true);
         return;
       }
 
-      // Pass turn to opponent
       endTurn('opponent');
-      setTimeout(handleOpponentTurn, 1000); // Add slight delay for realism
-
-    }, isOnChain ? 2000 : 500); // Faster for demo mode
+      setTimeout(handleOpponentTurn, 1000);
+    }, isOnChain ? 2000 : 500);
   };
 
-  // Improved end game handler
+  const getShardReward = () => {
+    switch (aiDifficulty) {
+      case AIDifficultyTier.NOVICE:
+        return 1;
+      case AIDifficultyTier.VETERAN:
+        return 3;
+      case AIDifficultyTier.LEGEND:
+        return 5;
+      default:
+        return 1;
+    }
+  };
+
+  const handleShardRedemption = () => {
+    setPlayerData(prev => ({
+      ...prev,
+      shards: prev.shards - 10,
+      dailyTrialsRemaining: prev.dailyTrialsRemaining - 1,
+      lastTrialTime: Date.now()
+    }));
+
+    const newCardIndex = Math.floor(Math.random() * cards.length);
+    const newCard = cards[newCardIndex];
+    
+    setPlayerDeck(prev => [...prev, newCard]);
+    
+    setBattleLog(prev => [
+      ...prev, 
+      `You redeemed 10 shards and received a new ${newCard.rarity} card: ${newCard.name}!`
+    ]);
+  };
+
   const endGame = (playerWon: boolean | null) => {
     setGameStatus('end');
     
@@ -307,12 +321,24 @@ const Game = () => {
       
       let resultMessage = "";
       if (playerWon === true) {
-        resultMessage = "Victory! You've won the battle. 50 MONAD tokens awarded and recorded on-chain.";
+        const shardReward = getShardReward();
+        setPlayerData(prev => ({
+          ...prev,
+          shards: prev.shards + shardReward,
+          wins: prev.wins + 1
+        }));
+        
+        resultMessage = `Victory! You've won the battle. ${shardReward} Shards awarded and recorded on-chain.`;
         uiToast({
           title: "Victory!",
-          description: "You've won the battle and earned 50 MONAD tokens!",
+          description: `You've won the battle and earned ${shardReward} Shards!`,
         });
       } else if (playerWon === false) {
+        setPlayerData(prev => ({
+          ...prev,
+          losses: prev.losses + 1
+        }));
+        
         resultMessage = "Defeat! Better luck next time. Battle result recorded on MONAD blockchain.";
         uiToast({
           title: "Defeat!",
@@ -346,6 +372,24 @@ const Game = () => {
     setFatigueDamage(1);
     setConsecutiveSkips(0);
   };
+
+  const calculateWinRate = () => {
+    const totalGames = playerData.wins + playerData.losses;
+    if (totalGames === 0) return 0;
+    return playerData.wins / totalGames;
+  };
+
+  useEffect(() => {
+    const winRate = calculateWinRate();
+    
+    if (winRate >= 0.8) {
+      setAiDifficulty(AIDifficultyTier.LEGEND);
+    } else if (winRate >= 0.65) {
+      setAiDifficulty(AIDifficultyTier.VETERAN);
+    } else {
+      setAiDifficulty(AIDifficultyTier.NOVICE);
+    }
+  }, [playerData.wins, playerData.losses]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -498,6 +542,13 @@ const Game = () => {
           
           <div className="space-y-8">
             <MonadStatus />
+            
+            {gameStatus === 'end' && (
+              <ShardManager 
+                player={playerData} 
+                onRedeemShards={handleShardRedemption} 
+              />
+            )}
             
             <Card className="glassmorphism border-emerald-500/30 h-[320px] flex flex-col">
               <div className="p-4 border-b border-white/10">

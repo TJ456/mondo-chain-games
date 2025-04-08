@@ -1,4 +1,3 @@
-
 export enum CardRarity {
   COMMON = "common",
   RARE = "rare",
@@ -41,6 +40,11 @@ export interface Card {
     pendingMoves: number;
     participantAddresses: string[];
   };
+  // Special effect for card gameplay
+  specialEffect?: {
+    description: string;
+    effectType: 'BUFF' | 'DEBUFF' | 'SHIELD' | 'DRAIN';
+  };
 }
 
 export interface Player {
@@ -54,6 +58,10 @@ export interface Player {
   losses: number;
   cards: Card[];
   monad: number; // MONAD tokens balance
+  // Add shard tracking to player
+  shards: number;
+  lastTrialTime?: number;
+  dailyTrialsRemaining: number;
   transactionHistory?: {
     txHash: string;
     type: 'BATTLE' | 'TRADE' | 'MINT' | 'EVOLVE' | 'COMPOSE';
@@ -209,4 +217,37 @@ export interface GovernanceProposal {
   votesFor: number;
   votesAgainst: number;
   affectedGameMechanics: string[];
+}
+
+// Add new interfaces for the Shard system
+export interface ShardTransaction {
+  id: string;
+  playerAddress: string;
+  amount: number;
+  reason: 'BATTLE_WIN' | 'NFT_REDEMPTION' | 'DAILY_REWARD';
+  timestamp: number;
+  expiryTimestamp: number;
+  tier: AIDifficultyTier;
+  verified: boolean;
+  onChainTxHash?: string;
+}
+
+export enum AIDifficultyTier {
+  NOVICE = 'novice',
+  VETERAN = 'veteran',
+  LEGEND = 'legend'
+}
+
+export interface TierRequirement {
+  tier: AIDifficultyTier;
+  requiredWinRate: number;
+  shardReward: number;
+  nftRarity: CardRarity;
+}
+
+export interface NFTRedemptionRule {
+  shardsRequired: number;
+  cooldownPeriod: number; // in milliseconds
+  maxDailyTrials: number;
+  gasCost: number;
 }
