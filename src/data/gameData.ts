@@ -1,4 +1,3 @@
-
 import { Card, CardRarity, CardType, MarketListing, Player, GameState, MonadTransaction } from "../types/game";
 
 // Mock Monad blockchain transactions
@@ -193,6 +192,9 @@ export const players: Player[] = [
     losses: 52,
     cards: [cards[0], cards[3], cards[5], cards[7]],
     monad: 5000,
+    shards: 8,
+    dailyTrialsRemaining: 2,
+    lastTrialTime: Date.now() - 36 * 60 * 60 * 1000, // 36 hours ago
     transactionHistory: [
       {
         txHash: "0xabc123...",
@@ -219,6 +221,8 @@ export const players: Player[] = [
     losses: 43,
     cards: [cards[1], cards[2], cards[6]],
     monad: 3500,
+    shards: 3,
+    dailyTrialsRemaining: 3,
     transactionHistory: [
       {
         txHash: "0xghi789...",
@@ -239,6 +243,9 @@ export const players: Player[] = [
     losses: 58,
     cards: [cards[0], cards[1], cards[4], cards[5], cards[7]],
     monad: 8200,
+    shards: 15,
+    dailyTrialsRemaining: 1,
+    lastTrialTime: Date.now() - 12 * 60 * 60 * 1000, // 12 hours ago
     transactionHistory: [
       {
         txHash: "0xjkl012...",
@@ -258,7 +265,9 @@ export const players: Player[] = [
     wins: 89,
     losses: 67,
     cards: [cards[2], cards[3]],
-    monad: 2100
+    monad: 2100,
+    shards: 6,
+    dailyTrialsRemaining: 3
   },
   {
     id: "player-5",
@@ -270,7 +279,9 @@ export const players: Player[] = [
     wins: 163,
     losses: 42,
     cards: [cards[1], cards[6], cards[7]],
-    monad: 6300
+    monad: 6300,
+    shards: 9,
+    dailyTrialsRemaining: 3
   }
 ];
 
@@ -323,6 +334,8 @@ export const currentPlayer: Player = {
   losses: 8,
   cards: [cards[0], cards[1], cards[2]],
   monad: 1000,
+  shards: 5,
+  dailyTrialsRemaining: 3,
   transactionHistory: [
     {
       txHash: "0xmno345...",

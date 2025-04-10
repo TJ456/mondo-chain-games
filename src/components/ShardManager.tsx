@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Player, AIDifficultyTier, TierRequirement, NFTRedemptionRule } from '@/types/game';
+import { Player, AIDifficultyTier, TierRequirement, NFTRedemptionRule, CardRarity } from '@/types/game';
 import { monadGameState } from '@/data/gameData';
 
 interface ShardManagerProps {
@@ -18,19 +18,19 @@ const tierRequirements: TierRequirement[] = [
     tier: AIDifficultyTier.NOVICE,
     requiredWinRate: 0.5, // 50%
     shardReward: 1,
-    nftRarity: 'common'
+    nftRarity: CardRarity.COMMON
   },
   {
     tier: AIDifficultyTier.VETERAN,
     requiredWinRate: 0.65, // 65%
     shardReward: 3,
-    nftRarity: 'rare'
+    nftRarity: CardRarity.RARE
   },
   {
     tier: AIDifficultyTier.LEGEND,
     requiredWinRate: 0.8, // 80%
     shardReward: 5,
-    nftRarity: 'epic'
+    nftRarity: CardRarity.EPIC
   }
 ];
 
