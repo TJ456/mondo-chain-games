@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card } from "@/components/ui/card";
@@ -83,8 +82,12 @@ const Game = () => {
     setPlayerDeck(prevCards =>
       prevCards.map(card => ({
         ...card,
+        originalAttack: card.attack,
+        originalDefense: card.defense,
+        originalSpecial: card.special,
         attack: card.attack ? Math.floor(card.attack * (1 + boostEffect / 100)) : undefined,
         defense: card.defense ? Math.floor(card.defense * (1 + boostEffect / 100)) : undefined,
+        special: card.special ? Math.floor(card.special * (1 + boostEffect / 100)) : undefined,
         boosted: true,
       }))
     );
@@ -93,20 +96,23 @@ const Game = () => {
     setPlayerMonadBalance(prev => prev - amount);
     
     setBattleLog(prev => [...prev, `MONAD Boost activated! +${boostEffect}% power for ${duration} turns`]);
+    
+    toast.success("Card Boost Activated!", {
+      description: `All cards powered up by ${boostEffect}% for ${duration} turns`,
+    });
   };
 
   const endTurn = useCallback((nextPlayer: 'player' | 'opponent') => {
-    // Handle boost expiration
     if (boostActive && boostDetails) {
       const newTurnsLeft = boostDetails.remainingTurns - 1;
       
       if (newTurnsLeft <= 0) {
-        // Boost expired
         setPlayerDeck(prevCards =>
           prevCards.map(card => ({
             ...card,
-            attack: card.attack && card.boosted ? Math.floor(card.attack / (1 + boostDetails.effect / 100)) : card.attack,
-            defense: card.defense && card.boosted ? Math.floor(card.defense / (1 + boostDetails.effect / 100)) : card.defense,
+            attack: card.originalAttack,
+            defense: card.originalDefense,
+            special: card.originalSpecial,
             boosted: false,
           }))
         );
@@ -114,7 +120,6 @@ const Game = () => {
         setBoostDetails(null);
         setBattleLog(prev => [...prev, "MONAD Boost expired - cards returned to normal"]);
       } else {
-        // Boost still active
         setBoostDetails(prev => ({
           ...prev!,
           remainingTurns: newTurnsLeft
@@ -558,9 +563,14 @@ const Game = () => {
                   
                   <div className="flex justify-center space-x-4 mb-4">
                     {playerDeck.map(card => (
-                      <div key={card.id} className="transform hover:-translate-y-2 transition-transform">
+                      <div key={card.id} className={`transform hover:-translate-y-2 transition-transform ${card.boosted ? 'card-boosted' : ''}`}>
                         <div onClick={() => gameStatus === 'playing' && playCard(card)}>
                           <GameCard card={card} className="w-20 h-28" showDetails={false} />
+                          {card.boosted && (
+                            <div className="text-center text-[10px] stat-boost">
+                              Boosted
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

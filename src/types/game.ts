@@ -1,3 +1,4 @@
+
 export enum CardRarity {
   COMMON = "common",
   RARE = "rare",
@@ -23,6 +24,11 @@ export interface Card {
   defense?: number;
   mana: number;
   monadId: string; // For Monad blockchain integration
+  boosted?: boolean; // Added for boost mechanics
+  special?: number; // Added for special attack value
+  originalAttack?: number; // Store original values during boost
+  originalDefense?: number;
+  originalSpecial?: number;
   onChainMetadata?: {
     creator: string;
     creationBlock: number;

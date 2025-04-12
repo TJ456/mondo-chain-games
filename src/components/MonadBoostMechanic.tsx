@@ -24,41 +24,45 @@ const MonadBoostMechanic: React.FC<MonadBoostMechanicProps> = ({
     timeLeft: number;
   } | null>(null);
   
-  // Calculate boost effect
+  // Improved smooth logarithmic scaling for boost effect
   const calculateBoostEffect = (amount: number) => {
-    // Non-linear scaling for more strategic decisions
-    if (amount < 10) return amount * 2; // 200% return for small amounts
-    if (amount < 50) return Math.round(amount * 1.8); // 180% return for medium amounts
-    return Math.round(amount * 1.5); // 150% return for large amounts (prevents pay-to-win)
+    // Base effect with diminishing returns
+    const baseEffect = amount * 2; // Base 200%
+    const diminishingFactor = Math.log10(amount + 1); // +1 to avoid log(0)
+    return Math.round(baseEffect / (1 + diminishingFactor * 0.2));
   };
   
-  // Calculate boost duration
-  const calculateBoostDuration = (amount: number) => {
-    // Base duration plus scaling
-    return Math.min(5, Math.max(3, Math.floor(amount / 10) + 3)); // 3-5 turns
+  const calculateBoostDuration = (amount: number): number => {
+    if (amount <= 1) return 2;
+    if (amount >= 32) return 6;
+    return 2 + Math.floor(Math.log2(amount));
+  };
+  // Calculate current efficiency percentage
+  const calculateEfficiency = (amount: number) => {
+    const effect = calculateBoostEffect(amount);
+    return (effect / amount) * 100;
   };
   
   const boostEffect = calculateBoostEffect(boostAmount);
   const boostDuration = calculateBoostDuration(boostAmount);
+  const currentEfficiency = calculateEfficiency(boostAmount);
   
-  const handleBoost = () => {
+  const handleBoost = async () => {
     if (boostAmount > playerMonad) {
       toast.error("Insufficient MONAD tokens");
       return;
     }
     
     setIsProcessing(true);
-    
-    toast.loading("Staking MONAD tokens for power boost...", {
-      id: "boost-tx"
-    });
-    
-    // Simulate transaction processing
-    setTimeout(() => {
+    toast.loading("Processing on Monad chain...", { id: "boost-tx" });
+
+    try {
+      // Simulate Monad's fast finality (500ms instead of 1000ms)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const effect = calculateBoostEffect(boostAmount);
       const duration = calculateBoostDuration(boostAmount);
       
-      // Set active boost
       setActiveBoost({
         amount: boostAmount,
         effect,
@@ -66,16 +70,20 @@ const MonadBoostMechanic: React.FC<MonadBoostMechanicProps> = ({
         timeLeft: duration
       });
       
-      toast.success("Boost activated!", {
+      toast.success("Boost confirmed!", {
         id: "boost-tx",
-        description: `+${effect}% power to all cards for ${duration} turns`
+        description: `+${effect}% power (Monad tx confirmed in 500ms)`
       });
       
-      // Call parent component callback
       onBoost(boostAmount, effect, duration);
-      
+    } catch (error) {
+      toast.error("Boost failed", {
+        id: "boost-tx",
+        description: "Monad chain transaction reverted"
+      });
+    } finally {
       setIsProcessing(false);
-    }, 1000);
+    }
   };
   
   // Count down boost timer
@@ -94,11 +102,18 @@ const MonadBoostMechanic: React.FC<MonadBoostMechanicProps> = ({
         });
         setActiveBoost(null);
       }
-    }, 5000); // Simulate turn-based gameplay with 5-second intervals
+    }, 5000); // 5-second intervals for turn-based gameplay
     
     return () => clearTimeout(timer);
   }, [activeBoost]);
   
+  // Get efficiency color based on current value
+  const getEfficiencyColor = (efficiency: number) => {
+    if (efficiency > 180) return 'text-green-400';
+    if (efficiency > 160) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
   return (
     <Card className="glassmorphism border-indigo-500/30 p-4">
       <div className="flex items-center space-x-2 mb-4">
@@ -166,10 +181,40 @@ const MonadBoostMechanic: React.FC<MonadBoostMechanicProps> = ({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Efficiency</span>
-                <span className={`font-bold ${boostAmount < 10 ? 'text-green-400' : 
-                  boostAmount < 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {boostAmount < 10 ? '200%' : boostAmount < 50 ? '180%' : '150%'}
+                <span className={`font-bold ${getEfficiencyColor(currentEfficiency)}`}>
+                  {currentEfficiency.toFixed(0)}%
                 </span>
+              </div>
+            </div>
+
+            {/* Efficiency curve visualization */}
+            <div className="mt-2">
+              <div className="text-xs text-gray-400 mb-1">Boost Efficiency Curve</div>
+              <div className="h-20 w-full bg-black/20 rounded-md p-1 flex">
+                {[1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((amount) => {
+                  if (amount > playerMonad) return null;
+                  const efficiency = calculateEfficiency(amount);
+                  return (
+                    <div 
+                      key={amount}
+                      className="flex-1 flex flex-col justify-end"
+                      title={`${amount} MONAD → ${efficiency.toFixed(0)}% efficiency`}
+                    >
+                      <div 
+                        className={`w-full ${amount === boostAmount ? 'border border-yellow-400' : ''}`}
+                        style={{
+                          height: `${Math.min(100, efficiency)}%`,
+                          background: efficiency > 180 ? 'linear-gradient(to top, #10b981, #34d399)' :
+                                   efficiency > 160 ? 'linear-gradient(to top, #f59e0b, #fbbf24)' :
+                                   'linear-gradient(to top, #ef4444, #f87171)'
+                        }}
+                      />
+                      <div className="text-[8px] text-center text-gray-400 truncate">
+                        {amount}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -177,7 +222,7 @@ const MonadBoostMechanic: React.FC<MonadBoostMechanicProps> = ({
         
         {!activeBoost && (
           <Button 
-            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600"
+            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700"
             disabled={isProcessing || boostAmount > playerMonad}
             onClick={handleBoost}
           >
@@ -192,37 +237,50 @@ const MonadBoostMechanic: React.FC<MonadBoostMechanicProps> = ({
         )}
         
         <div className="text-center text-xs text-gray-500">
-          Powered by Monad's sub-second finality
+          Powered by Monad's sub-second finality • {new Date().toLocaleTimeString()}
         </div>
       </div>
       
-      {/* Card preview with boost effect */}
+      {/* Enhanced card preview with boost effect */}
       {activeBoost && (
-        <div className="mt-4 p-3 bg-black/20 rounded-lg">
+        <div className="mt-4 p-3 bg-black/20 rounded-lg border border-indigo-500/30">
           <div className="text-xs text-center text-gray-400 mb-2">
             Card Power Preview with Boost
           </div>
-          <div className="flex justify-between">
-            <div className="text-center">
+          <div className="flex justify-between space-x-2">
+            <div className="text-center flex-1 p-2 bg-black/30 rounded">
               <div className="text-xs text-gray-500">Attack</div>
-              <div className="flex items-center">
+              <div className="flex items-center justify-center">
                 <span className="text-white">5</span>
                 <span className="text-green-400 text-xs ml-1">+{Math.round(5 * activeBoost.effect/100)}</span>
               </div>
+              <div className="text-[10px] text-green-400 mt-1">
+                ({activeBoost.effect}% boost)
+              </div>
             </div>
-            <div className="text-center">
+            <div className="text-center flex-1 p-2 bg-black/30 rounded">
               <div className="text-xs text-gray-500">Defense</div>
-              <div className="flex items-center">
+              <div className="flex items-center justify-center">
                 <span className="text-white">3</span>
                 <span className="text-green-400 text-xs ml-1">+{Math.round(3 * activeBoost.effect/100)}</span>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs text-gray-500">Mana</div>
-              <div className="flex items-center">
-                <span className="text-white">4</span>
+              <div className="text-[10px] text-green-400 mt-1">
+                ({activeBoost.effect}% boost)
               </div>
             </div>
+            <div className="text-center flex-1 p-2 bg-black/30 rounded">
+              <div className="text-xs text-gray-500">Special</div>
+              <div className="flex items-center justify-center">
+                <span className="text-white">2</span>
+                <span className="text-green-400 text-xs ml-1">+{Math.round(2 * activeBoost.effect/100)}</span>
+              </div>
+              <div className="text-[10px] text-green-400 mt-1">
+                ({activeBoost.effect}% boost)
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-center text-indigo-400">
+            All active cards receive this boost
           </div>
         </div>
       )}
