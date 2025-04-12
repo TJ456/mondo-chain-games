@@ -1,11 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Player, AIDifficultyTier, TierRequirement, NFTRedemptionRule, CardRarity } from '@/types/game';
 import { monadGameState } from '@/data/gameData';
+import { Sparkles, Clock, AlertCircle, Flame, CheckCircle2 } from "lucide-react";
 
 interface ShardManagerProps {
   player: Player;
@@ -43,6 +45,7 @@ const nftRedemptionRules: NFTRedemptionRule = {
 };
 
 const ShardManager: React.FC<ShardManagerProps> = ({ player, onRedeemShards }) => {
+  const [redeemHover, setRedeemHover] = useState(false);
   const canRedeem = player.shards >= nftRedemptionRules.shardsRequired;
   const cooldownActive = player.lastTrialTime && 
     (Date.now() - player.lastTrialTime < nftRedemptionRules.cooldownPeriod);
@@ -104,7 +107,10 @@ const ShardManager: React.FC<ShardManagerProps> = ({ player, onRedeemShards }) =
     <Card className="glassmorphism border-emerald-500/30">
       <CardHeader>
         <CardTitle className="flex justify-between">
-          <span>Shard Manager</span>
+          <span className="flex items-center">
+            <Sparkles className="h-5 w-5 mr-2 text-emerald-400" /> 
+            Shard Manager
+          </span>
           <div className="flex items-center">
             <div className="h-4 w-4 bg-emerald-500/30 rounded-full mr-2 flex items-center justify-center">
               <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -118,11 +124,18 @@ const ShardManager: React.FC<ShardManagerProps> = ({ player, onRedeemShards }) =
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Shard Progress */}
+        {/* Shard Progress with Animation */}
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Shards: {player.shards}/{nftRedemptionRules.shardsRequired}</span>
-            <span className="text-emerald-400">{Math.floor((player.shards / nftRedemptionRules.shardsRequired) * 100)}%</span>
+          <div className="flex justify-between items-center text-sm">
+            <div className="flex items-center">
+              <div className={`w-6 h-6 mr-2 rounded-full bg-emerald-500/20 flex items-center justify-center ${player.shards > 0 ? 'shard-animation' : ''}`}>
+                <Sparkles className="h-3 w-3 text-emerald-400" />
+              </div>
+              <span>Shards: <span className="font-bold text-emerald-400">{player.shards}</span>/{nftRedemptionRules.shardsRequired}</span>
+            </div>
+            <Badge variant="outline" className={player.shards >= nftRedemptionRules.shardsRequired ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-400'}>
+              {Math.floor((player.shards / nftRedemptionRules.shardsRequired) * 100)}% Complete
+            </Badge>
           </div>
           <Progress 
             value={(player.shards / nftRedemptionRules.shardsRequired) * 100} 
@@ -130,53 +143,159 @@ const ShardManager: React.FC<ShardManagerProps> = ({ player, onRedeemShards }) =
           />
         </div>
         
-        {/* Shard Tiers Table */}
+        {/* Shard Tiers Table with Visual Indicators */}
         <div className="border border-white/10 rounded-md overflow-hidden">
+          <div className="bg-black/30 px-3 py-2 border-b border-white/10">
+            <h3 className="text-sm font-semibold text-white">AI Difficulty Tiers</h3>
+            <p className="text-xs text-gray-400">Higher difficulty = better rewards</p>
+          </div>
           <table className="w-full text-sm">
             <thead className="bg-black/30">
               <tr>
-                <th className="py-2 px-3 text-left">AI Tier</th>
+                <th className="py-2 px-3 text-left">Tier</th>
                 <th className="py-2 px-3 text-center">Win Rate</th>
                 <th className="py-2 px-3 text-center">Reward</th>
                 <th className="py-2 px-3 text-right">NFT Rarity</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {tierRequirements.map((tier) => (
-                <tr key={tier.tier} className="bg-black/20">
-                  <td className="py-2 px-3 capitalize">{tier.tier}</td>
-                  <td className="py-2 px-3 text-center">{tier.requiredWinRate * 100}%</td>
-                  <td className="py-2 px-3 text-center">{tier.shardReward} Shards</td>
-                  <td className="py-2 px-3 text-right capitalize">{tier.nftRarity}</td>
-                </tr>
-              ))}
+              {tierRequirements.map((tier, index) => {
+                // Calculate if this tier is active based on player win rate
+                const playerWinRate = player.wins > 0 ? player.wins / (player.wins + player.losses) : 0;
+                const isTierActive = playerWinRate >= tier.requiredWinRate;
+                const isCurrentTier = 
+                  (tier.tier === AIDifficultyTier.NOVICE && playerWinRate < tierRequirements[1].requiredWinRate) ||
+                  (tier.tier === AIDifficultyTier.VETERAN && playerWinRate >= tierRequirements[1].requiredWinRate && playerWinRate < tierRequirements[2].requiredWinRate) ||
+                  (tier.tier === AIDifficultyTier.LEGEND && playerWinRate >= tierRequirements[2].requiredWinRate);
+                
+                return (
+                  <tr 
+                    key={tier.tier} 
+                    className={`${isCurrentTier ? 'bg-emerald-900/20' : 'bg-black/20'} hover:bg-black/40 transition-colors`}
+                  >
+                    <td className="py-2 px-3 capitalize">
+                      <div className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${isTierActive ? 'bg-emerald-500' : 'bg-gray-600'}`}></div>
+                        {tier.tier}
+                        {isCurrentTier && (
+                          <Badge variant="outline" className="ml-2 py-0 px-1 bg-emerald-900/30 text-emerald-400 text-xs">
+                            Current
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      {(tier.requiredWinRate * 100).toFixed(0)}%
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      <div className="flex items-center justify-center">
+                        <Sparkles className="h-3 w-3 mr-1 text-emerald-400" />
+                        <span className={`${isTierActive ? 'text-emerald-400 font-semibold' : 'text-gray-400'}`}>
+                          {tier.shardReward} 
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-right capitalize">
+                      <Badge className={`
+                        ${tier.nftRarity === CardRarity.COMMON ? 'bg-gray-700/50 text-gray-300' : ''}
+                        ${tier.nftRarity === CardRarity.RARE ? 'bg-blue-900/50 text-blue-300' : ''}
+                        ${tier.nftRarity === CardRarity.EPIC ? 'bg-purple-900/50 text-purple-300' : ''}
+                        ${tier.nftRarity === CardRarity.LEGENDARY ? 'bg-amber-900/50 text-amber-300' : ''}
+                      `}>
+                        {tier.nftRarity}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
         
-        {/* Anti-Farming Info */}
-        <div className="text-sm space-y-2 bg-black/20 p-3 rounded-md border border-white/10">
-          <h3 className="font-semibold">Anti-Farming Rules:</h3>
-          <ul className="list-disc list-inside space-y-1 text-gray-300">
-            <li>Maximum {nftRedemptionRules.maxDailyTrials} NFT trials per day</li>
-            <li>Each redemption costs {nftRedemptionRules.gasCost} MONAD gas</li>
-            <li>24-hour cooldown between redemptions</li>
-            <li>Shards expire after 24 hours</li>
+        {/* Anti-Farming Info with Icons */}
+        <div className="text-sm space-y-3 bg-black/20 p-3 rounded-md border border-white/10">
+          <h3 className="font-semibold text-white flex items-center">
+            <AlertCircle className="h-4 w-4 mr-2 text-amber-400" />
+            Anti-Farming Rules
+          </h3>
+          <ul className="space-y-2 text-gray-300">
+            <li className="flex items-center">
+              <div className="w-6 h-6 rounded-full bg-black/30 flex items-center justify-center mr-2 flex-shrink-0">
+                <Clock className="h-3 w-3 text-gray-400" />
+              </div>
+              <span>Maximum <span className="text-amber-400 font-semibold">{nftRedemptionRules.maxDailyTrials}</span> NFT trials per day</span>
+            </li>
+            <li className="flex items-center">
+              <div className="w-6 h-6 rounded-full bg-black/30 flex items-center justify-center mr-2 flex-shrink-0">
+                <div className="h-3 w-3 text-gray-400 flex items-center justify-center">
+                  M
+                </div>
+              </div>
+              <span>Each redemption costs <span className="text-amber-400 font-semibold">{nftRedemptionRules.gasCost}</span> MONAD gas</span>
+            </li>
+            <li className="flex items-center">
+              <div className="w-6 h-6 rounded-full bg-black/30 flex items-center justify-center mr-2 flex-shrink-0">
+                <Clock className="h-3 w-3 text-gray-400" />
+              </div>
+              <span>24-hour cooldown between redemptions</span>
+            </li>
+            <li className="flex items-center">
+              <div className="w-6 h-6 rounded-full bg-black/30 flex items-center justify-center mr-2 flex-shrink-0">
+                <Flame className="h-3 w-3 text-gray-400" />
+              </div>
+              <span>Shards expire after 24 hours</span>
+            </li>
           </ul>
+          
+          {/* Player Stats */}
+          <div className="bg-black/30 rounded p-2 mt-2">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs text-gray-400">Daily Trials:</span>
+              <span className="text-xs font-mono">{player.dailyTrialsRemaining}/{nftRedemptionRules.maxDailyTrials}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400">MONAD Balance:</span>
+              <span className="text-xs font-mono">{player.monad.toFixed(2)} MONAD</span>
+            </div>
+          </div>
         </div>
       </CardContent>
       
       <CardFooter>
         <Button 
           onClick={handleRedeemClick}
+          onMouseEnter={() => setRedeemHover(true)}
+          onMouseLeave={() => setRedeemHover(false)}
           disabled={!canRedeem || cooldownActive || !hasEnoughGas || player.dailyTrialsRemaining <= 0}
-          className="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-white"
+          className={`w-full ${redeemHover && canRedeem && !cooldownActive && hasEnoughGas && player.dailyTrialsRemaining > 0 ? 'redeem-animation' : ''} 
+            bg-gradient-to-r from-emerald-400 to-teal-500 text-white flex items-center justify-center`}
         >
-          {!canRedeem ? `Need ${nftRedemptionRules.shardsRequired - player.shards} more shards` :
-            cooldownActive ? `Cooldown: ${getTimeRemaining()}` :
-            !hasEnoughGas ? `Need ${nftRedemptionRules.gasCost} MONAD for gas` :
-            player.dailyTrialsRemaining <= 0 ? 'Daily limit reached' :
-            'Redeem NFT Card'}
+          {canRedeem && !cooldownActive && hasEnoughGas && player.dailyTrialsRemaining > 0 ? (
+            <>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Redeem NFT Card
+            </>
+          ) : !canRedeem ? (
+            <>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Need {nftRedemptionRules.shardsRequired - player.shards} more shards
+            </>
+          ) : cooldownActive ? (
+            <>
+              <Clock className="h-4 w-4 mr-2" />
+              Cooldown: {getTimeRemaining()}
+            </>
+          ) : !hasEnoughGas ? (
+            <>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Need {nftRedemptionRules.gasCost} MONAD for gas
+            </>
+          ) : (
+            <>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Daily limit reached
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>
