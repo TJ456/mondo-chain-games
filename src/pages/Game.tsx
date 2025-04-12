@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card } from "@/components/ui/card";
 import GameCard from '@/components/GameCard';
 import MonadStatus from '@/components/MonadStatus';
 import ShardManager from '@/components/ShardManager';
+import MonadBoostMechanic from '@/components/MonadBoostMechanic';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from "sonner";
@@ -35,6 +37,9 @@ const Game = () => {
     dailyTrialsRemaining: 3
   });
   const [aiDifficulty, setAiDifficulty] = useState<AIDifficultyTier>(AIDifficultyTier.NOVICE);
+  const [playerMonadBalance, setPlayerMonadBalance] = useState(1000);
+  const [boostActive, setBoostActive] = useState(false);
+  const [boostDetails, setBoostDetails] = useState<{effect: number, remainingTurns: number} | null>(null);
 
   useEffect(() => {
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
@@ -74,7 +79,52 @@ const Game = () => {
     });
   };
 
+  const handleBoostActivation = (amount: number, boostEffect: number, duration: number) => {
+    setPlayerDeck(prevCards =>
+      prevCards.map(card => ({
+        ...card,
+        attack: card.attack ? Math.floor(card.attack * (1 + boostEffect / 100)) : undefined,
+        defense: card.defense ? Math.floor(card.defense * (1 + boostEffect / 100)) : undefined,
+        boosted: true,
+      }))
+    );
+    setBoostActive(true);
+    setBoostDetails({ effect: boostEffect, remainingTurns: duration });
+    setPlayerMonadBalance(prev => prev - amount);
+    
+    setBattleLog(prev => [...prev, `MONAD Boost activated! +${boostEffect}% power for ${duration} turns`]);
+  };
+
   const endTurn = useCallback((nextPlayer: 'player' | 'opponent') => {
+    // Handle boost expiration
+    if (boostActive && boostDetails) {
+      const newTurnsLeft = boostDetails.remainingTurns - 1;
+      
+      if (newTurnsLeft <= 0) {
+        // Boost expired
+        setPlayerDeck(prevCards =>
+          prevCards.map(card => ({
+            ...card,
+            attack: card.attack && card.boosted ? Math.floor(card.attack / (1 + boostDetails.effect / 100)) : card.attack,
+            defense: card.defense && card.boosted ? Math.floor(card.defense / (1 + boostDetails.effect / 100)) : card.defense,
+            boosted: false,
+          }))
+        );
+        setBoostActive(false);
+        setBoostDetails(null);
+        setBattleLog(prev => [...prev, "MONAD Boost expired - cards returned to normal"]);
+      } else {
+        // Boost still active
+        setBoostDetails(prev => ({
+          ...prev!,
+          remainingTurns: newTurnsLeft
+        }));
+        if (newTurnsLeft === 1) {
+          setBattleLog(prev => [...prev, "MONAD Boost will expire next turn!"]);
+        }
+      }
+    }
+
     setCurrentTurn(nextPlayer);
     
     if (nextPlayer === 'player') {
@@ -84,7 +134,11 @@ const Game = () => {
     }
 
     setSelectedCard(null);
-  }, []);
+    
+    if (nextPlayer === 'opponent') {
+      setTimeout(handleOpponentTurn, 1000);
+    }
+  }, [boostActive, boostDetails]);
 
   const handleNoPlayableCards = (player: 'player' | 'opponent', message: string) => {
     const newLogs = [...battleLog, message];
@@ -371,6 +425,8 @@ const Game = () => {
     setCurrentTurn('player');
     setFatigueDamage(1);
     setConsecutiveSkips(0);
+    setBoostActive(false);
+    setBoostDetails(null);
   };
 
   const calculateWinRate = () => {
@@ -542,6 +598,13 @@ const Game = () => {
           
           <div className="space-y-8">
             <MonadStatus />
+            
+            {gameStatus === 'playing' && (
+              <MonadBoostMechanic 
+                playerMonad={playerMonadBalance}
+                onBoost={handleBoostActivation}
+              />
+            )}
             
             {gameStatus === 'end' && (
               <ShardManager 
