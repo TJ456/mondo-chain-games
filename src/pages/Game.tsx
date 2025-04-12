@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card } from "@/components/ui/card";
@@ -11,6 +12,11 @@ import { toast } from "sonner";
 import { cards, currentPlayer, monadGameState } from '@/data/gameData';
 import { Card as GameCardType, MonadGameMove, CardType, AIDifficultyTier, TierRequirement, Player as PlayerType } from '@/types/game';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Constants for local storage keys
+const STORAGE_KEY_SHARDS = "monad_game_shards";
+const STORAGE_KEY_LAST_REDEMPTION = "monad_game_last_redemption";
+const STORAGE_KEY_DAILY_TRIALS = "monad_game_daily_trials";
 
 const Game = () => {
   const { toast: uiToast } = useToast();
@@ -32,17 +38,57 @@ const Game = () => {
   const [consecutiveSkips, setConsecutiveSkips] = useState(0);
   const [playerData, setPlayerData] = useState<PlayerType>({
     ...currentPlayer,
-    shards: 5,
-    dailyTrialsRemaining: 3
+    shards: 0, // Will be loaded from localStorage
+    dailyTrialsRemaining: 3,
+    lastTrialTime: 0
   });
   const [aiDifficulty, setAiDifficulty] = useState<AIDifficultyTier>(AIDifficultyTier.NOVICE);
   const [playerMonadBalance, setPlayerMonadBalance] = useState(1000);
   const [boostActive, setBoostActive] = useState(false);
   const [boostDetails, setBoostDetails] = useState<{effect: number, remainingTurns: number} | null>(null);
 
+  // Load player data from localStorage on component mount
   useEffect(() => {
+    // Load shards
+    const savedShards = localStorage.getItem(STORAGE_KEY_SHARDS);
+    const parsedShards = savedShards ? parseInt(savedShards, 10) : 0;
+    
+    // Load last redemption time
+    const savedLastRedemption = localStorage.getItem(STORAGE_KEY_LAST_REDEMPTION);
+    const parsedLastRedemption = savedLastRedemption ? parseInt(savedLastRedemption, 10) : 0;
+    
+    // Load daily trials remaining
+    const savedDailyTrials = localStorage.getItem(STORAGE_KEY_DAILY_TRIALS);
+    const parsedDailyTrials = savedDailyTrials ? parseInt(savedDailyTrials, 10) : 3;
+    
+    // Reset daily trials if it's a new day
+    const lastRedemptionDate = new Date(parsedLastRedemption);
+    const currentDate = new Date();
+    const isNewDay = lastRedemptionDate.getDate() !== currentDate.getDate() || 
+                     lastRedemptionDate.getMonth() !== currentDate.getMonth() ||
+                     lastRedemptionDate.getFullYear() !== currentDate.getFullYear();
+    
+    const dailyTrialsToSet = isNewDay ? 3 : parsedDailyTrials;
+    
+    // Update player data with saved values
+    setPlayerData(prev => ({
+      ...prev,
+      shards: parsedShards,
+      lastTrialTime: parsedLastRedemption,
+      dailyTrialsRemaining: dailyTrialsToSet
+    }));
+    
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
   }, []);
+  
+  // Save player data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SHARDS, playerData.shards.toString());
+    if (playerData.lastTrialTime) {
+      localStorage.setItem(STORAGE_KEY_LAST_REDEMPTION, playerData.lastTrialTime.toString());
+    }
+    localStorage.setItem(STORAGE_KEY_DAILY_TRIALS, playerData.dailyTrialsRemaining.toString());
+  }, [playerData.shards, playerData.lastTrialTime, playerData.dailyTrialsRemaining]);
 
   const getPlayableCards = useCallback((cards: GameCardType[], mana: number) => {
     return cards.filter(card => card.mana <= mana);
@@ -345,23 +391,74 @@ const Game = () => {
     }
   };
 
+  // Enhanced shard redemption with NFT acquisition simulation
   const handleShardRedemption = () => {
-    setPlayerData(prev => ({
-      ...prev,
-      shards: prev.shards - 10,
-      dailyTrialsRemaining: prev.dailyTrialsRemaining - 1,
-      lastTrialTime: Date.now()
-    }));
+    // Check if player has enough shards
+    if (playerData.shards < 10) {
+      toast.error("Not enough shards", {
+        description: `You need 10 shards to redeem an NFT card.`
+      });
+      return;
+    }
+    
+    // Check if player has daily trials remaining
+    if (playerData.dailyTrialsRemaining <= 0) {
+      toast.error("Daily limit reached", {
+        description: `Maximum ${3} NFT trials per day.`
+      });
+      return;
+    }
+    
+    // Check if cooldown has passed
+    const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    if (playerData.lastTrialTime && (Date.now() - playerData.lastTrialTime < cooldownPeriod)) {
+      const timeRemaining = playerData.lastTrialTime + cooldownPeriod - Date.now();
+      const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
+      const minutes = Math.floor((timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+      
+      toast.error("Cooldown active", {
+        description: `Try again in ${hours}h ${minutes}m.`
+      });
+      return;
+    }
+    
+    // Simulate blockchain transaction
+    toast.loading("Processing NFT redemption on MONAD chain...");
+    
+    setTimeout(() => {
+      // Deduct shards and update player data
+      setPlayerData(prev => ({
+        ...prev,
+        shards: prev.shards - 10,
+        dailyTrialsRemaining: prev.dailyTrialsRemaining - 1,
+        lastTrialTime: Date.now()
+      }));
 
-    const newCardIndex = Math.floor(Math.random() * cards.length);
-    const newCard = cards[newCardIndex];
-    
-    setPlayerDeck(prev => [...prev, newCard]);
-    
-    setBattleLog(prev => [
-      ...prev, 
-      `You redeemed 10 shards and received a new ${newCard.rarity} card: ${newCard.name}!`
-    ]);
+      // Select a random new card
+      const newCardIndex = Math.floor(Math.random() * cards.length);
+      const newCard = cards[newCardIndex];
+      
+      // Add the new card to player's deck
+      setPlayerDeck(prev => [...prev, newCard]);
+      
+      // Update battle log
+      setBattleLog(prev => [
+        ...prev, 
+        `You redeemed 10 shards and received a new ${newCard.rarity} card: ${newCard.name}!`
+      ]);
+      
+      // Show success notification
+      toast.success("NFT Redeemed!", { 
+        description: `Your new ${newCard.rarity} card "${newCard.name}" has been added to your collection.`
+      });
+      
+      // Show additional notification about cooldown
+      setTimeout(() => {
+        toast.info("Redemption cooldown active", {
+          description: "You can redeem another NFT in 24 hours."
+        });
+      }, 1500);
+    }, 2000);
   };
 
   const endGame = (playerWon: boolean | null) => {
@@ -381,6 +478,8 @@ const Game = () => {
       let resultMessage = "";
       if (playerWon === true) {
         const shardReward = getShardReward();
+        
+        // Update player data with new shards
         setPlayerData(prev => ({
           ...prev,
           shards: prev.shards + shardReward,
