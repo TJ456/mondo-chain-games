@@ -1,167 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Import existing CSS first */
-@import './components/ui/card-animation.css';
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
 
-/* Add any other global styles here */
-.glassmorphism {
-  background: rgba(17, 25, 40, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+ 
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 222.2 47.4% 11.2%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 217.2 32.6% 17.5%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ===== Scrollbar CSS ===== */
+/* Firefox */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #8f5cf6 #ffffff;
+}
+
+/* Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #8f5cf6;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.125);
+  border: 1px solid #ffffff;
 }
 
-/* Shard animations */
-@keyframes shardGlow {
-  0% {
-    filter: brightness(1);
-    transform: rotate(0deg) scale(1);
-  }
-  50% {
-    filter: brightness(1.5);
-    transform: rotate(180deg) scale(1.2);
-  }
-  100% {
-    filter: brightness(1);
-    transform: rotate(360deg) scale(1);
-  }
-}
-
-.shard-animation {
-  animation: shardGlow 2s ease-in-out;
-}
-
-/* Boost animations */
-@keyframes boostPulse {
-  0% {
-    box-shadow: 0 0 5px 2px rgba(99, 102, 241, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 15px 5px rgba(99, 102, 241, 0.7);
-  }
-  100% {
-    box-shadow: 0 0 5px 2px rgba(99, 102, 241, 0.3);
-  }
-}
-
-.boost-animation {
-  animation: boostPulse 1.5s infinite;
-}
-
-/* Card boost animation */
-@keyframes cardBoostGlow {
-  0% {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 0 5px rgba(99, 102, 241, 0.4);
-  }
-  50% {
-    border-color: rgba(99, 102, 241, 0.8);
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
-  }
-  100% {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 0 5px rgba(99, 102, 241, 0.4);
-  }
-}
-
+/* Card Boost Animation */
 .card-boosted {
-  animation: cardBoostGlow 1.5s infinite;
-  border: 2px solid rgba(99, 102, 241, 0.6);
+  position: relative;
+  animation: card-pulse 1.5s infinite alternate;
 }
 
 .stat-boost {
-  color: #818cf8;
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(to right, #4f46e5, #8b5cf6);
+  color: white;
+  border-radius: 4px;
+  padding: 1px 6px;
   font-weight: bold;
 }
 
-/* NFT redemption animation */
-@keyframes redeemShine {
+@keyframes card-pulse {
   0% {
-    background-position: -100% 0;
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(79, 70, 229, 0);
   }
   100% {
-    background-position: 200% 0;
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) scale(1.1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.1);
+  }
+  100% {
+    transform: translateY(0px) scale(1.1);
   }
 }
 
 .redeem-animation {
-  background: linear-gradient(
-    to right,
-    rgba(16, 185, 129, 0.1) 0%,
-    rgba(16, 185, 129, 0.3) 25%,
-    rgba(52, 211, 153, 0.5) 50%,
-    rgba(16, 185, 129, 0.3) 75%,
-    rgba(16, 185, 129, 0.1) 100%
-  );
-  background-size: 200% 100%;
-  animation: redeemShine 1.5s infinite;
+  animation: glow 2s infinite alternate;
 }
 
-/* Difficulty tier badges */
-.badge-novice {
-  background: linear-gradient(45deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.2));
-  border: 1px solid rgba(16, 185, 129, 0.4);
+@keyframes glow {
+  from {
+    box-shadow: 0 0 10px -10px #10b981;
+  }
+  to {
+    box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0.7);
+  }
 }
 
-.badge-veteran {
-  background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2));
-  border: 1px solid rgba(37, 99, 235, 0.4);
+.glassmorphism {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-.badge-legend {
-  background: linear-gradient(45deg, rgba(236, 72, 153, 0.2), rgba(217, 70, 239, 0.2));
-  border: 1px solid rgba(217, 70, 239, 0.4);
+/* Game Room Cards */
+.shard-animation {
+  animation: shard-pulse 2s infinite;
 }
 
-/* Card acquisition animation */
-@keyframes cardAcquired {
+@keyframes shard-pulse {
   0% {
-    transform: scale(0.8);
-    opacity: 0;
+    transform: scale(1);
+    opacity: 1;
   }
   50% {
     transform: scale(1.1);
-    opacity: 1;
+    opacity: 0.8;
   }
   100% {
     transform: scale(1);
     opacity: 1;
   }
-}
-
-.card-acquired {
-  animation: cardAcquired 0.8s ease-out;
-}
-
-/* Victory animation */
-@keyframes victoryPulse {
-  0% {
-    box-shadow: 0 0 5px 2px rgba(16, 185, 129, 0.3);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0.5);
-    transform: scale(1.05);
-  }
-  100% {
-    box-shadow: 0 0 5px 2px rgba(16, 185, 129, 0.3);
-    transform: scale(1);
-  }
-}
-
-.victory-animation {
-  animation: victoryPulse 2s infinite;
-}
-
-/* Tier-specific UI */
-.tier-novice {
-  border-color: rgba(52, 211, 153, 0.4) !important;
-}
-
-.tier-veteran {
-  border-color: rgba(59, 130, 246, 0.4) !important;
-}
-
-.tier-legend {
-  border-color: rgba(217, 70, 239, 0.4) !important;
 }
