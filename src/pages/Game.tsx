@@ -959,7 +959,7 @@ const Game = () => {
                 
                 <div>
                   <MonadBoostMechanic 
-                    monadBalance={playerMonadBalance}
+                    playerMonadBalance={playerMonadBalance}
                     onActivateBoost={handleBoostActivation}
                     boostActive={boostActive}
                     boostDetails={boostDetails}
