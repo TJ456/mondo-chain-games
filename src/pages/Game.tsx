@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { cards, currentPlayer, monadGameState } from '@/data/gameData';
 import { Card as GameCardType, MonadGameMove, CardType, AIDifficultyTier, TierRequirement, Player as PlayerType } from '@/types/game';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Package } from 'lucide-react';
+import { Package, Shield, Sword, Zap } from 'lucide-react';
 
 const STORAGE_KEY_SHARDS = "monad_game_shards";
 const STORAGE_KEY_LAST_REDEMPTION = "monad_game_last_redemption";
@@ -193,6 +193,21 @@ const Game = () => {
     setCurrentTurn('player');
     setBattleLog(['Battle has begun on the MONAD blockchain! Your turn.']);
     
+    let difficultyMessage = "";
+    switch (aiDifficulty) {
+      case AIDifficultyTier.NOVICE:
+        difficultyMessage = "Novice training battle begins. Perfect your strategy!";
+        break;
+      case AIDifficultyTier.VETERAN:
+        difficultyMessage = "Veteran AI activated. This opponent has advanced tactics!";
+        break;
+      case AIDifficultyTier.LEGEND:
+        difficultyMessage = "LEGENDARY AI ENGAGED! Prepare for the ultimate challenge!";
+        break;
+    }
+    
+    setBattleLog(prev => [...prev, difficultyMessage]);
+    
     uiToast({
       title: "Game Started",
       description: "The battle has begun! Play your first card.",
@@ -315,17 +330,30 @@ const Game = () => {
   const handleOpponentTurn = useCallback(() => {
     if (gameStatus !== 'playing') return;
 
+    console.log("AI Turn started. AI difficulty:", aiDifficulty);
+    console.log("AI has mana:", opponentMana);
+    console.log("AI cards:", opponentCards);
+
     const playableCards = getPlayableCards(opponentCards, opponentMana);
+    console.log("AI playable cards:", playableCards);
 
     if (playableCards.length > 0) {
       let cardToPlay: GameCardType;
+      let aiThinkingDelay = 500; // Novice thinks quickly
       
       switch (aiDifficulty) {
         case AIDifficultyTier.NOVICE:
           cardToPlay = playableCards[Math.floor(Math.random() * playableCards.length)];
+          aiThinkingDelay = 800;
+          
+          setBattleLog(prev => [...prev, "The novice opponent considers their move..."]);
           break;
           
         case AIDifficultyTier.VETERAN:
+          aiThinkingDelay = 1200; // Veteran takes more time to "think"
+          
+          setBattleLog(prev => [...prev, "The veteran opponent calculates their strategy..."]);
+          
           if (opponentHealth < 8) {
             const defenseCards = playableCards.filter(c => c.defense && c.defense > 0);
             cardToPlay = defenseCards.length > 0 
@@ -346,6 +374,10 @@ const Game = () => {
           break;
           
         case AIDifficultyTier.LEGEND:
+          aiThinkingDelay = 1500; // Legend takes even more time to "think"
+          
+          setBattleLog(prev => [...prev, "The legendary opponent unleashes advanced battle algorithms..."]);
+          
           const scoredCards = playableCards.map(card => {
             let score = 0;
             
@@ -374,60 +406,94 @@ const Game = () => {
           cardToPlay = playableCards[Math.floor(Math.random() * playableCards.length)];
       }
 
-      setOpponentMana(prev => prev - cardToPlay.mana);
-      setOpponentCards(prev => prev.filter(c => c.id !== cardToPlay.id));
+      setTimeout(() => {
+        console.log("AI playing card:", cardToPlay);
+        
+        setOpponentMana(prev => prev - cardToPlay.mana);
+        setOpponentCards(prev => prev.filter(c => c.id !== cardToPlay.id));
 
-      let logEntry = `Opponent played ${cardToPlay.name}.`;
-      let newPlayerHealth = playerHealth;
-      let newOpponentHealth = opponentHealth;
+        let logEntry = `Opponent played ${cardToPlay.name}.`;
+        let newPlayerHealth = playerHealth;
+        let newOpponentHealth = opponentHealth;
 
-      if (cardToPlay.attack) {
-        newPlayerHealth = Math.max(0, playerHealth - cardToPlay.attack);
-        logEntry += ` Dealt ${cardToPlay.attack} damage.`;
-      }
-
-      if (cardToPlay.defense) {
-        newOpponentHealth = Math.min(30, opponentHealth + cardToPlay.defense);
-        logEntry += ` Gained ${cardToPlay.defense} health.`;
-      }
-
-      if (cardToPlay.specialEffect) {
-        logEntry += ` ${cardToPlay.specialEffect.description}`;
-        if (cardToPlay.specialEffect.type === 'damage') {
-          const extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.2);
-          newPlayerHealth = Math.max(0, newPlayerHealth - extraDamage);
-          logEntry += ` +${extraDamage} bonus damage!`;
-        } else if (cardToPlay.specialEffect.type === 'heal') {
-          const extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.2);
-          newOpponentHealth = Math.min(30, newOpponentHealth + extraHeal);
-          logEntry += ` +${extraHeal} bonus healing!`;
+        if (cardToPlay.attack) {
+          newPlayerHealth = Math.max(0, playerHealth - cardToPlay.attack);
+          logEntry += ` Dealt ${cardToPlay.attack} damage.`;
         }
-      }
 
-      setPlayerHealth(newPlayerHealth);
-      setOpponentHealth(newOpponentHealth);
-      setBattleLog(prev => [...prev, logEntry]);
-
-      setConsecutiveSkips(0);
-      
-      if (newPlayerHealth <= 0) {
-        endGame(false);
-        return;
-      }
-
-      endTurn('player');
-
-      const playerCanPlay = getPlayableCards(playerDeck, playerMana + 1).length > 0;
-      if (!playerCanPlay) {
-        if (playerDeck.length === 0) {
-          setTimeout(() => handleFatigue('player'), 1000);
-        } else {
-          setTimeout(() => {
-            setBattleLog(prev => [...prev, "No playable cards - turn passed."]);
-            endTurn('opponent');
-          }, 1000);
+        if (cardToPlay.defense) {
+          newOpponentHealth = Math.min(30, opponentHealth + cardToPlay.defense);
+          logEntry += ` Gained ${cardToPlay.defense} health.`;
         }
-      }
+
+        if (cardToPlay.specialEffect) {
+          logEntry += ` ${cardToPlay.specialEffect.description}`;
+          if (cardToPlay.specialEffect.type === 'damage' && cardToPlay.specialEffect.value) {
+            let extraDamage = 0;
+            
+            switch (aiDifficulty) {
+              case AIDifficultyTier.NOVICE:
+                extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.1);
+                break;
+              case AIDifficultyTier.VETERAN:
+                extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.2);
+                break;
+              case AIDifficultyTier.LEGEND:
+                extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.5);
+                break;
+            }
+            
+            if (extraDamage > 0) {
+              newPlayerHealth = Math.max(0, newPlayerHealth - extraDamage);
+              logEntry += ` +${extraDamage} bonus damage!`;
+            }
+          } else if (cardToPlay.specialEffect.type === 'heal' && cardToPlay.specialEffect.value) {
+            let extraHeal = 0;
+            
+            switch (aiDifficulty) {
+              case AIDifficultyTier.NOVICE:
+                extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.1);
+                break;
+              case AIDifficultyTier.VETERAN:
+                extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.2);
+                break;
+              case AIDifficultyTier.LEGEND:
+                extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.5);
+                break;
+            }
+            
+            if (extraHeal > 0) {
+              newOpponentHealth = Math.min(30, newOpponentHealth + extraHeal);
+              logEntry += ` +${extraHeal} bonus healing!`;
+            }
+          }
+        }
+
+        setPlayerHealth(newPlayerHealth);
+        setOpponentHealth(newOpponentHealth);
+        setBattleLog(prev => [...prev, logEntry]);
+
+        setConsecutiveSkips(0);
+        
+        if (newPlayerHealth <= 0) {
+          endGame(false);
+          return;
+        }
+
+        endTurn('player');
+
+        const playerCanPlay = getPlayableCards(playerDeck, playerMana + 1).length > 0;
+        if (!playerCanPlay) {
+          if (playerDeck.length === 0) {
+            setTimeout(() => handleFatigue('player'), 1000);
+          } else {
+            setTimeout(() => {
+              setBattleLog(prev => [...prev, "No playable cards - turn passed."]);
+              endTurn('opponent');
+            }, 1000);
+          }
+        }
+      }, aiThinkingDelay);
 
     } else if (opponentCards.length === 0) {
       handleFatigue('opponent');
@@ -435,7 +501,7 @@ const Game = () => {
       setBattleLog(prev => [...prev, "Opponent passes (no playable cards)"]);
       endTurn('player');
     }
-  }, [gameStatus, opponentCards, opponentMana, playerDeck, playerMana, opponentHealth, playerHealth, endTurn, getPlayableCards, aiDifficulty]);
+  }, [gameStatus, opponentCards, opponentMana, playerDeck, playerMana, opponentHealth, playerHealth, endTurn, getPlayableCards, aiDifficulty, handleFatigue]);
 
   const playCard = (card: GameCardType) => {
     if (gameStatus !== 'playing' || currentTurn !== 'player') {
@@ -674,6 +740,26 @@ const Game = () => {
     setBattleLog([]);
   };
 
+  const renderManaExplanation = () => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger className="text-xs text-blue-400 underline cursor-help">
+          What is Mana?
+        </TooltipTrigger>
+        <TooltipContent className="w-80 p-3 bg-black/90 border border-blue-500/30">
+          <div>
+            <h4 className="font-bold text-blue-400 mb-1">MONAD Mana System</h4>
+            <p className="text-xs text-white/80">
+              Mana is the energy resource that powers your cards. Each card requires a specific amount 
+              of mana to play. You start with 10 mana and gain +1 mana each turn (up to a maximum of 10).
+              Strategic mana management is key to victory!
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   const renderGameContent = () => {
     switch (gameStatus) {
       case 'room_select':
@@ -698,15 +784,17 @@ const Game = () => {
               
               <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 w-full max-w-md">
                 <Button 
-                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600" 
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 transform transition-all hover:scale-105"
                   onClick={startGame}
                 >
+                  <Zap className="w-4 h-4 mr-2" />
                   Start Battle
                 </Button>
                 <Button 
-                  className="w-full bg-gradient-to-r from-emerald-400 to-teal-500"
+                  className="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 transform transition-all hover:scale-105"
                   onClick={openInventory}
                 >
+                  <Package className="w-4 h-4 mr-2" />
                   View Inventory
                 </Button>
               </div>
@@ -745,7 +833,11 @@ const Game = () => {
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h2 className="text-2xl font-bold text-white">MONAD Battle</h2>
-                  <p className="text-gray-400 text-sm">Difficulty: <span className="text-emerald-400 capitalize">{aiDifficulty}</span></p>
+                  <p className="text-gray-400 text-sm">
+                    Difficulty: <span className="text-emerald-400 capitalize">{aiDifficulty}</span> 
+                    <span className="mx-2">•</span> 
+                    {renderManaExplanation()}
+                  </p>
                 </div>
                 <ShardManager 
                   player={playerData}
@@ -759,10 +851,13 @@ const Game = () => {
                     <div className="p-4">
                       <div className="grid grid-cols-2 gap-4 mb-6">
                         <div>
-                          <div className="text-emerald-400 text-sm mb-1">Your Health</div>
+                          <div className="text-emerald-400 text-sm mb-1 flex items-center">
+                            <Shield className="w-4 h-4 mr-1" />
+                            Your Health
+                          </div>
                           <div className="h-4 bg-black/50 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500 ease-in-out"
                               style={{ width: `${(playerHealth / 20) * 100}%` }}
                             ></div>
                           </div>
@@ -772,10 +867,13 @@ const Game = () => {
                           </div>
                         </div>
                         <div>
-                          <div className="text-red-400 text-sm mb-1 text-right">Opponent Health</div>
+                          <div className="text-red-400 text-sm mb-1 text-right flex items-center justify-end">
+                            Opponent Health
+                            <Shield className="w-4 h-4 ml-1" />
+                          </div>
                           <div className="h-4 bg-black/50 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full"
+                              className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full transition-all duration-500 ease-in-out"
                               style={{ width: `${(opponentHealth / 20) * 100}%` }}
                             ></div>
                           </div>
@@ -788,20 +886,26 @@ const Game = () => {
                       
                       <div className="grid grid-cols-2 gap-4 mb-6">
                         <div>
-                          <div className="text-blue-400 text-sm mb-1">Your Mana</div>
+                          <div className="text-blue-400 text-sm mb-1 flex items-center">
+                            <Zap className="w-4 h-4 mr-1" />
+                            Your Mana
+                          </div>
                           <div className="h-3 bg-black/50 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
+                              className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all duration-500 ease-in-out"
                               style={{ width: `${(playerMana / 10) * 100}%` }}
                             ></div>
                           </div>
                           <div className="text-xs text-white mt-1">{playerMana}/10</div>
                         </div>
                         <div>
-                          <div className="text-purple-400 text-sm mb-1 text-right">Opponent Mana</div>
+                          <div className="text-purple-400 text-sm mb-1 text-right flex items-center justify-end">
+                            Opponent Mana
+                            <Zap className="w-4 h-4 ml-1" />
+                          </div>
                           <div className="h-3 bg-black/50 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 rounded-full"
+                              className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 rounded-full transition-all duration-500 ease-in-out"
                               style={{ width: `${(opponentMana / 10) * 100}%` }}
                             ></div>
                           </div>
@@ -810,22 +914,43 @@ const Game = () => {
                       </div>
                       
                       <div className="mb-6">
-                        <h3 className="text-white text-sm mb-2">Battle Log</h3>
+                        <h3 className="text-white text-sm flex items-center mb-2">
+                          Battle Log
+                          <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${currentTurn === 'player' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {currentTurn === 'player' ? 'Your Turn' : 'AI Turn'}
+                          </span>
+                        </h3>
                         <div className="bg-black/40 rounded-md p-2 h-40 overflow-y-auto border border-white/10">
                           {battleLog.map((log, index) => (
-                            <p key={index} className="text-xs text-gray-300 mb-1">{log}</p>
+                            <p key={index} className={`text-xs mb-1 ${index === battleLog.length - 1 ? 'text-emerald-400' : 'text-gray-300'}`}>
+                              {log}
+                            </p>
                           ))}
                         </div>
                       </div>
                       
                       <div>
-                        <h3 className="text-white text-sm mb-2">Your Cards</h3>
+                        <h3 className="text-white text-sm mb-2 flex items-center">
+                          <Sword className="w-4 h-4 mr-1" />
+                          Your Cards
+                        </h3>
                         <div className="grid grid-cols-3 gap-2">
                           {playerDeck.map(card => (
-                            <div key={card.id} onClick={() => playCard(card)} className={`cursor-pointer transform hover:-translate-y-1 transition-transform ${currentTurn !== 'player' || playerMana < card.mana ? 'opacity-50' : ''}`}>
+                            <div 
+                              key={card.id} 
+                              onClick={() => playCard(card)} 
+                              className={`cursor-pointer transform hover:-translate-y-1 transition-transform ${
+                                currentTurn !== 'player' || playerMana < card.mana ? 'opacity-50' : 'hover:scale-105'
+                              }`}
+                            >
                               <GameCard card={card} showDetails={false} />
                             </div>
                           ))}
+                          {playerDeck.length === 0 && (
+                            <div className="col-span-3 text-center p-4 border border-dashed border-gray-700 rounded-md">
+                              <p className="text-gray-400 text-sm">No cards in hand</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -834,7 +959,7 @@ const Game = () => {
                 
                 <div>
                   <MonadBoostMechanic 
-                    playerBalance={playerMonadBalance}
+                    monadBalance={playerMonadBalance}
                     onActivateBoost={handleBoostActivation}
                     boostActive={boostActive}
                     boostDetails={boostDetails}
@@ -846,7 +971,9 @@ const Game = () => {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-400">Turn:</span>
-                          <span className="text-xs text-emerald-400 capitalize">{currentTurn}</span>
+                          <span className={`text-xs ${currentTurn === 'player' ? 'text-emerald-400' : 'text-red-400'} capitalize`}>
+                            {currentTurn}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-400">Cards Left:</span>
@@ -860,9 +987,21 @@ const Game = () => {
                           <span className="text-xs text-gray-400">Shards:</span>
                           <span className="text-xs text-emerald-400">{playerData.shards}</span>
                         </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-400">AI Difficulty:</span>
+                          <span className="text-xs text-emerald-400 capitalize">{aiDifficulty}</span>
+                        </div>
                       </div>
                     </div>
                   </UICard>
+                  
+                  {aiDifficulty === AIDifficultyTier.LEGEND && (
+                    <div className="mt-4 p-3 rounded-md bg-red-900/20 border border-red-500/30 animate-pulse">
+                      <p className="text-xs text-red-400 font-semibold">
+                        ⚠️ LEGEND MODE ACTIVE: AI has enhanced abilities and advanced strategy algorithms.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -882,23 +1021,30 @@ const Game = () => {
               <div className="bg-black/30 rounded-md p-4 mb-6 w-full max-w-md">
                 <div className="text-center mb-4">
                   <div className="text-sm text-gray-400 mb-1">Final Result</div>
-                  <div className="text-lg font-bold text-emerald-400">
+                  <div className={`text-lg font-bold ${playerHealth <= 0 ? 'text-red-400' : opponentHealth <= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
                     {playerHealth <= 0 ? 'Defeat' : opponentHealth <= 0 ? 'Victory!' : 'Draw'}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <div className="text-sm text-gray-400 mb-1">Your Health</div>
+                    <div className="text-sm text-gray-400 mb-1 flex items-center">
+                      <Shield className="w-4 h-4 mr-1" />
+                      Your Health
+                    </div>
                     <div className="text-lg font-bold">{playerHealth}/20</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-400 mb-1">Opponent Health</div>
-                    <div className="text-lg font-bold">{opponentHealth}/20</div>
+                    <div className="text-sm text-gray-400 mb-1 flex items-center justify-end">
+                      Opponent Health
+                      <Shield className="w-4 h-4 ml-1" />
+                    </div>
+                    <div className="text-lg font-bold text-right">{opponentHealth}/20</div>
                   </div>
                 </div>
                 <div className="text-center mb-4">
                   <div className="text-sm text-gray-400 mb-1">Total Shards</div>
                   <div className="text-3xl font-bold text-amber-400">{playerData.shards}</div>
+                  <div className="text-xs text-gray-400 mt-1">Use these to redeem new cards!</div>
                 </div>
                 <div className="bg-black/30 rounded p-3">
                   <div className="text-sm text-gray-400 mb-1">Battle Log</div>
@@ -910,10 +1056,12 @@ const Game = () => {
                 </div>
               </div>
               <div className="flex space-x-4 w-full max-w-md">
-                <Button onClick={backToRoomSelection} className="w-full bg-gradient-to-r from-emerald-400 to-teal-500">
+                <Button onClick={backToRoomSelection} className="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 transform transition-all hover:scale-105">
+                  <Zap className="w-4 h-4 mr-2" />
                   New Battle
                 </Button>
-                <Button onClick={openInventory} className="w-full bg-gradient-to-r from-amber-500 to-amber-600">
+                <Button onClick={openInventory} className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 transform transition-all hover:scale-105">
+                  <Package className="w-4 h-4 mr-2" />
                   View Inventory
                 </Button>
               </div>
