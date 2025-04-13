@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
-import { Card } from "@/components/ui/card";
+import { Card as UICard } from "@/components/ui/card";
 import GameCard from '@/components/GameCard';
 import MonadStatus from '@/components/MonadStatus';
 import ShardManager from '@/components/ShardManager';
@@ -15,7 +15,6 @@ import { Card as GameCardType, MonadGameMove, CardType, AIDifficultyTier, TierRe
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Package } from 'lucide-react';
 
-// Constants for local storage keys
 const STORAGE_KEY_SHARDS = "monad_game_shards";
 const STORAGE_KEY_LAST_REDEMPTION = "monad_game_last_redemption";
 const STORAGE_KEY_DAILY_TRIALS = "monad_game_daily_trials";
@@ -39,7 +38,7 @@ const Game = () => {
   const [consecutiveSkips, setConsecutiveSkips] = useState(0);
   const [playerData, setPlayerData] = useState<PlayerType>({
     ...currentPlayer,
-    shards: 0, // Will be loaded from localStorage
+    shards: 0,
     dailyTrialsRemaining: 3,
     lastTrialTime: 0
   });
@@ -49,34 +48,25 @@ const Game = () => {
   const [boostDetails, setBoostDetails] = useState<{effect: number, remainingTurns: number} | null>(null);
   const [allPlayerCards, setAllPlayerCards] = useState<GameCardType[]>(currentPlayer.cards);
 
-  // Load player data from localStorage on component mount
   useEffect(() => {
-    // Load shards
     const savedShards = localStorage.getItem(STORAGE_KEY_SHARDS);
     const parsedShards = savedShards ? parseInt(savedShards, 10) : 0;
     
-    // Load last redemption time
     const savedLastRedemption = localStorage.getItem(STORAGE_KEY_LAST_REDEMPTION);
     const parsedLastRedemption = savedLastRedemption ? parseInt(savedLastRedemption, 10) : 0;
     
-    // Load daily trials remaining
     const savedDailyTrials = localStorage.getItem(STORAGE_KEY_DAILY_TRIALS);
     const parsedDailyTrials = savedDailyTrials ? parseInt(savedDailyTrials, 10) : 3;
     
-    // Load player cards from localStorage
     const savedPlayerCards = localStorage.getItem(STORAGE_KEY_PLAYER_CARDS);
     const parsedPlayerCards = savedPlayerCards ? JSON.parse(savedPlayerCards) : currentPlayer.cards;
     
-    // Reset daily trials if it's a new day
-    const lastRedemptionDate = new Date(parsedLastRedemption);
-    const currentDate = new Date();
-    const isNewDay = lastRedemptionDate.getDate() !== currentDate.getDate() || 
-                     lastRedemptionDate.getMonth() !== currentDate.getMonth() ||
-                     lastRedemptionDate.getFullYear() !== currentDate.getFullYear();
+    const isNewDay = new Date(parsedLastRedemption).getDate() !== new Date().getDate() || 
+                     new Date(parsedLastRedemption).getMonth() !== new Date().getMonth() ||
+                     new Date(parsedLastRedemption).getFullYear() !== new Date().getFullYear();
     
     const dailyTrialsToSet = isNewDay ? 3 : parsedDailyTrials;
     
-    // Update player data with saved values
     setPlayerData(prev => ({
       ...prev,
       shards: parsedShards,
@@ -89,7 +79,6 @@ const Game = () => {
     setIsOnChain(monadGameState.isOnChain && monadGameState.networkStatus === 'connected');
   }, []);
   
-  // Save player data to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_SHARDS, playerData.shards.toString());
     if (playerData.lastTrialTime) {
@@ -98,7 +87,6 @@ const Game = () => {
     localStorage.setItem(STORAGE_KEY_DAILY_TRIALS, playerData.dailyTrialsRemaining.toString());
   }, [playerData.shards, playerData.lastTrialTime, playerData.dailyTrialsRemaining]);
   
-  // Save player cards to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PLAYER_CARDS, JSON.stringify(allPlayerCards));
   }, [allPlayerCards]);
@@ -123,12 +111,10 @@ const Game = () => {
   const handleSelectDifficulty = (difficulty: AIDifficultyTier) => {
     setAiDifficulty(difficulty);
     
-    // Set up opponent cards based on difficulty
     let opponentCardPool: GameCardType[];
     
     switch (difficulty) {
       case AIDifficultyTier.NOVICE:
-        // Basic cards with lower stats
         opponentCardPool = cards
           .filter(card => card.rarity !== 'epic' && card.rarity !== 'legendary')
           .map(card => ({
@@ -139,12 +125,10 @@ const Game = () => {
         break;
         
       case AIDifficultyTier.VETERAN:
-        // Regular cards with normal stats
         opponentCardPool = cards.filter(card => card.rarity !== 'legendary');
         break;
         
       case AIDifficultyTier.LEGEND:
-        // Enhanced cards with higher stats
         opponentCardPool = cards.map(card => ({
           ...card,
           attack: card.attack ? Math.floor(card.attack * 1.2) : undefined,
@@ -156,7 +140,6 @@ const Game = () => {
         opponentCardPool = cards;
     }
     
-    // Select 3 random cards from the pool
     const randomCards: GameCardType[] = [];
     while (randomCards.length < 3 && opponentCardPool.length > 0) {
       const randomIndex = Math.floor(Math.random() * opponentCardPool.length);
@@ -167,7 +150,6 @@ const Game = () => {
     setOpponentCards(randomCards);
     setGameStatus('waiting');
     
-    // Show toast based on difficulty
     let difficultyName = '';
     let description = '';
     
@@ -200,8 +182,6 @@ const Game = () => {
   };
 
   const selectDeckCards = () => {
-    // For now, just select the first 3 cards from the player's collection
-    // In a more complex version, this would let players choose their deck
     const selectedCards = allPlayerCards.slice(0, 3);
     setPlayerDeck(selectedCards);
     setGameStatus('waiting');
@@ -324,7 +304,6 @@ const Game = () => {
     setFatigueDamage(prev => prev + 1);
     setConsecutiveSkips(prev => prev + 1);
 
-    // Only end in a tie if there are multiple skips in a row
     if (consecutiveSkips >= 3) {
       endGame(null);
       return;
@@ -339,31 +318,25 @@ const Game = () => {
     const playableCards = getPlayableCards(opponentCards, opponentMana);
 
     if (playableCards.length > 0) {
-      // Enhanced AI logic based on difficulty level
       let cardToPlay: GameCardType;
       
       switch (aiDifficulty) {
         case AIDifficultyTier.NOVICE:
-          // Novice AI: Randomly selects any playable card
           cardToPlay = playableCards[Math.floor(Math.random() * playableCards.length)];
           break;
           
         case AIDifficultyTier.VETERAN:
-          // Veteran AI: Makes smarter choices based on game state
           if (opponentHealth < 8) {
-            // Prioritize defense when low health
             const defenseCards = playableCards.filter(c => c.defense && c.defense > 0);
             cardToPlay = defenseCards.length > 0 
               ? defenseCards.reduce((best, current) => (current.defense! > best.defense!) ? current : best, defenseCards[0]) 
               : playableCards[Math.floor(Math.random() * playableCards.length)];
           } else if (playerHealth < 10) {
-            // Prioritize attack when player is low health
             const attackCards = playableCards.filter(c => c.attack && c.attack > 0);
             cardToPlay = attackCards.length > 0 
               ? attackCards.reduce((best, current) => (current.attack! > best.attack!) ? current : best, attackCards[0]) 
               : playableCards[Math.floor(Math.random() * playableCards.length)];
           } else {
-            // Otherwise play the highest value card
             cardToPlay = playableCards.reduce((best, current) => {
               const currentValue = (current.attack || 0) + (current.defense || 0);
               const bestValue = (best.attack || 0) + (best.defense || 0);
@@ -373,34 +346,25 @@ const Game = () => {
           break;
           
         case AIDifficultyTier.LEGEND:
-          // Legend AI: Uses advanced strategy with lookahead
-          // Calculate best move considering current state and potential future states
           const scoredCards = playableCards.map(card => {
             let score = 0;
             
-            // Base score is the card's combined attack/defense value
-            score += (card.attack || 0) * 1.2; // Value attack slightly higher
+            score += (card.attack || 0) * 1.2;
             score += (card.defense || 0);
             
-            // Strategic modifiers
             if (playerHealth <= card.attack!) {
-              // Lethal play gets highest priority
               score += 100;
             } else if (opponentHealth < 8) {
-              // When low on health, healing is valuable
               score += (card.defense || 0) * 2;
             } else if (playerMana > 8) {
-              // If player has lots of mana, prioritize attack to put pressure
               score += (card.attack || 0) * 0.5;
             }
             
-            // Consider mana efficiency
             score = score / card.mana;
             
             return { card, score };
           });
           
-          // Pick the highest scoring card
           cardToPlay = scoredCards.reduce((best, current) => 
             current.score > best.score ? current : best, scoredCards[0]
           ).card;
@@ -429,33 +393,14 @@ const Game = () => {
 
       if (cardToPlay.specialEffect) {
         logEntry += ` ${cardToPlay.specialEffect.description}`;
-        // Apply special effects based on difficulty level
-        switch (aiDifficulty) {
-          case AIDifficultyTier.VETERAN:
-            // Veteran AI gets a 20% boost to special effects
-            if (cardToPlay.specialEffect.type === 'damage') {
-              const extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.2);
-              newPlayerHealth = Math.max(0, newPlayerHealth - extraDamage);
-              logEntry += ` +${extraDamage} bonus damage!`;
-            } else if (cardToPlay.specialEffect.type === 'heal') {
-              const extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.2);
-              newOpponentHealth = Math.min(30, newOpponentHealth + extraHeal);
-              logEntry += ` +${extraHeal} bonus healing!`;
-            }
-            break;
-            
-          case AIDifficultyTier.LEGEND:
-            // Legend AI gets a 50% boost to special effects
-            if (cardToPlay.specialEffect.type === 'damage') {
-              const extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.5);
-              newPlayerHealth = Math.max(0, newPlayerHealth - extraDamage);
-              logEntry += ` +${extraDamage} bonus damage!`;
-            } else if (cardToPlay.specialEffect.type === 'heal') {
-              const extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.5);
-              newOpponentHealth = Math.min(30, newOpponentHealth + extraHeal);
-              logEntry += ` +${extraHeal} bonus healing!`;
-            }
-            break;
+        if (cardToPlay.specialEffect.type === 'damage') {
+          const extraDamage = Math.floor(cardToPlay.specialEffect.value * 0.2);
+          newPlayerHealth = Math.max(0, newPlayerHealth - extraDamage);
+          logEntry += ` +${extraDamage} bonus damage!`;
+        } else if (cardToPlay.specialEffect.type === 'heal') {
+          const extraHeal = Math.floor(cardToPlay.specialEffect.value * 0.2);
+          newOpponentHealth = Math.min(30, newOpponentHealth + extraHeal);
+          logEntry += ` +${extraHeal} bonus healing!`;
         }
       }
 
@@ -463,7 +408,6 @@ const Game = () => {
       setOpponentHealth(newOpponentHealth);
       setBattleLog(prev => [...prev, logEntry]);
 
-      // Reset consecutive skips counter since a card was played
       setConsecutiveSkips(0);
 
       if (newPlayerHealth <= 0) {
@@ -533,7 +477,6 @@ const Game = () => {
 
     if (card.specialEffect) {
       logEntry += ` ${card.specialEffect.description}`;
-      // Implement special effects logic here
       if (card.specialEffect.type === 'damage') {
         opponentNewHealth = Math.max(0, opponentNewHealth - card.specialEffect.value);
         logEntry += ` (${card.specialEffect.value} extra damage)`;
@@ -548,7 +491,6 @@ const Game = () => {
     setBattleLog(prev => [...prev, logEntry]);
     setPendingMoves(prev => [...prev, newMove]);
     
-    // Reset consecutive skips counter since a card was played
     setConsecutiveSkips(0);
     
     toast.loading("Submitting move to MONAD blockchain...", {
@@ -592,9 +534,7 @@ const Game = () => {
     }
   };
 
-  // Enhanced shard redemption with NFT acquisition simulation
   const handleShardRedemption = () => {
-    // Check if player has enough shards
     if (playerData.shards < 10) {
       toast.error("Not enough shards", {
         description: `You need 10 shards to redeem an NFT card.`
@@ -602,7 +542,6 @@ const Game = () => {
       return;
     }
     
-    // Check if player has daily trials remaining
     if (playerData.dailyTrialsRemaining <= 0) {
       toast.error("Daily limit reached", {
         description: `Maximum ${3} NFT trials per day.`
@@ -610,8 +549,7 @@ const Game = () => {
       return;
     }
     
-    // Check if cooldown has passed
-    const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    const cooldownPeriod = 24 * 60 * 60 * 1000;
     if (playerData.lastTrialTime && (Date.now() - playerData.lastTrialTime < cooldownPeriod)) {
       const timeRemaining = playerData.lastTrialTime + cooldownPeriod - Date.now();
       const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
@@ -623,11 +561,9 @@ const Game = () => {
       return;
     }
     
-    // Simulate blockchain transaction
     toast.loading("Processing NFT redemption on MONAD chain...");
     
     setTimeout(() => {
-      // Deduct shards and update player data
       setPlayerData(prev => ({
         ...prev,
         shards: prev.shards - 10,
@@ -635,26 +571,21 @@ const Game = () => {
         lastTrialTime: Date.now()
       }));
 
-      // Select a random new card
       const newCardIndex = Math.floor(Math.random() * cards.length);
       const newCard = cards[newCardIndex];
       
-      // Add the new card to player's deck and collection
       setPlayerDeck(prev => [...prev, newCard]);
       setAllPlayerCards(prev => [...prev, newCard]);
       
-      // Update battle log
       setBattleLog(prev => [
         ...prev, 
         `You redeemed 10 shards and received a new ${newCard.rarity} card: ${newCard.name}!`
       ]);
       
-      // Show success notification
       toast.success("NFT Redeemed!", { 
         description: `Your new ${newCard.rarity} card "${newCard.name}" has been added to your collection.`
       });
       
-      // Show additional notification about cooldown
       setTimeout(() => {
         toast.info("Redemption cooldown active", {
           description: "You can redeem another NFT in 24 hours."
@@ -681,7 +612,6 @@ const Game = () => {
       if (playerWon === true) {
         const shardReward = getShardReward();
         
-        // Update player data with new shards
         setPlayerData(prev => ({
           ...prev,
           shards: prev.shards + shardReward,
@@ -718,10 +648,7 @@ const Game = () => {
   };
 
   const resetGame = () => {
-    // Set deck based on a subset of all player cards
     setPlayerDeck(allPlayerCards.slice(0, 3));
-    
-    // Generate opponent cards based on difficulty (handled in handleSelectDifficulty)
     setSelectedCard(null);
     setPlayerMana(10);
     setOpponentMana(10);
@@ -751,7 +678,7 @@ const Game = () => {
         
       case 'waiting':
         return (
-          <Card className="glassmorphism border-emerald-500/30 h-[600px] flex flex-col">
+          <UICard className="glassmorphism border-emerald-500/30 h-[600px] flex flex-col">
             <div className="flex flex-col items-center justify-center h-full p-6">
               <div className="w-16 h-16 mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
@@ -764,3 +691,22 @@ const Game = () => {
               </p>
               
               <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 w-full max-w-md">
+                {/* Add content here if needed */}
+              </div>
+            </div>
+          </UICard>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div>
+      {renderGameContent()}
+    </div>
+  );
+};
+
+export default Game;
