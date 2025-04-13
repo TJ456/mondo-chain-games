@@ -409,7 +409,7 @@ const Game = () => {
       setBattleLog(prev => [...prev, logEntry]);
 
       setConsecutiveSkips(0);
-
+      
       if (newPlayerHealth <= 0) {
         endGame(false);
         return;
@@ -477,10 +477,10 @@ const Game = () => {
 
     if (card.specialEffect) {
       logEntry += ` ${card.specialEffect.description}`;
-      if (card.specialEffect.type === 'damage') {
+      if (card.specialEffect.type === 'damage' && card.specialEffect.value) {
         opponentNewHealth = Math.max(0, opponentNewHealth - card.specialEffect.value);
         logEntry += ` (${card.specialEffect.value} extra damage)`;
-      } else if (card.specialEffect.type === 'heal') {
+      } else if (card.specialEffect.type === 'heal' && card.specialEffect.value) {
         playerNewHealth = Math.min(30, playerNewHealth + card.specialEffect.value);
         logEntry += ` (${card.specialEffect.value} extra healing)`;
       }
@@ -612,11 +612,17 @@ const Game = () => {
       if (playerWon === true) {
         const shardReward = getShardReward();
         
-        setPlayerData(prev => ({
-          ...prev,
-          shards: prev.shards + shardReward,
-          wins: prev.wins + 1
-        }));
+        setPlayerData(prev => {
+          const updatedData = {
+            ...prev,
+            shards: prev.shards + shardReward,
+            wins: prev.wins + 1
+          };
+          
+          localStorage.setItem(STORAGE_KEY_SHARDS, updatedData.shards.toString());
+          
+          return updatedData;
+        });
         
         resultMessage = `Victory! You've won the battle. ${shardReward} Shards awarded and recorded on-chain.`;
         uiToast({
@@ -691,7 +697,225 @@ const Game = () => {
               </p>
               
               <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 w-full max-w-md">
-                {/* Add content here if needed */}
+                <Button 
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600" 
+                  onClick={startGame}
+                >
+                  Start Battle
+                </Button>
+                <Button 
+                  className="w-full bg-gradient-to-r from-emerald-400 to-teal-500"
+                  onClick={openInventory}
+                >
+                  View Inventory
+                </Button>
+              </div>
+              
+              <div className="mt-8 p-3 rounded-md bg-emerald-900/20 border border-emerald-500/30">
+                <h3 className="text-sm font-semibold text-emerald-300 mb-2">Game Setup:</h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="text-gray-300">Difficulty:</div>
+                  <div className="text-emerald-400 font-semibold capitalize">{aiDifficulty}</div>
+                  <div className="text-gray-300">Your Deck:</div>
+                  <div className="text-emerald-400 font-semibold">{playerDeck.length} Cards Ready</div>
+                  <div className="text-gray-300">Opponent:</div>
+                  <div className="text-emerald-400 font-semibold">{opponentCards.length} Cards Ready</div>
+                  <div className="text-gray-300">Shard Reward:</div>
+                  <div className="text-emerald-400 font-semibold">{getShardReward()} Shards</div>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  className="text-xs text-gray-400 hover:text-white"
+                  onClick={backToRoomSelection}
+                >
+                  Return to Room Selection
+                </Button>
+              </div>
+            </div>
+          </UICard>
+        );
+      
+      case 'playing':
+        return (
+          <UICard className="glassmorphism border-emerald-500/30">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">MONAD Battle</h2>
+                  <p className="text-gray-400 text-sm">Difficulty: <span className="text-emerald-400 capitalize">{aiDifficulty}</span></p>
+                </div>
+                <ShardManager 
+                  player={playerData}
+                  onRedeemShards={handleShardRedemption}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  <UICard className="bg-black/30 border-emerald-500/20">
+                    <div className="p-4">
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                          <div className="text-emerald-400 text-sm mb-1">Your Health</div>
+                          <div className="h-4 bg-black/50 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                              style={{ width: `${(playerHealth / 20) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-xs text-white">{playerHealth}</span>
+                            <span className="text-xs text-gray-500">20</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-red-400 text-sm mb-1 text-right">Opponent Health</div>
+                          <div className="h-4 bg-black/50 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-red-500 to-pink-500 rounded-full"
+                              style={{ width: `${(opponentHealth / 20) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-xs text-white">{opponentHealth}</span>
+                            <span className="text-xs text-gray-500">20</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                          <div className="text-blue-400 text-sm mb-1">Your Mana</div>
+                          <div className="h-3 bg-black/50 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
+                              style={{ width: `${(playerMana / 10) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-white mt-1">{playerMana}/10</div>
+                        </div>
+                        <div>
+                          <div className="text-purple-400 text-sm mb-1 text-right">Opponent Mana</div>
+                          <div className="h-3 bg-black/50 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 rounded-full"
+                              style={{ width: `${(opponentMana / 10) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-white mt-1 text-right">{opponentMana}/10</div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-6">
+                        <h3 className="text-white text-sm mb-2">Battle Log</h3>
+                        <div className="bg-black/40 rounded-md p-2 h-40 overflow-y-auto border border-white/10">
+                          {battleLog.map((log, index) => (
+                            <p key={index} className="text-xs text-gray-300 mb-1">{log}</p>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-white text-sm mb-2">Your Cards</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                          {playerDeck.map(card => (
+                            <div key={card.id} onClick={() => playCard(card)} className={`cursor-pointer transform hover:-translate-y-1 transition-transform ${currentTurn !== 'player' || playerMana < card.mana ? 'opacity-50' : ''}`}>
+                              <GameCard card={card} showDetails={false} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </UICard>
+                </div>
+                
+                <div>
+                  <MonadBoostMechanic 
+                    playerBalance={playerMonadBalance}
+                    onActivateBoost={handleBoostActivation}
+                    boostActive={boostActive}
+                    boostDetails={boostDetails}
+                  />
+                  
+                  <UICard className="bg-black/30 border-emerald-500/20 mt-4">
+                    <div className="p-4">
+                      <h3 className="text-white text-sm mb-2">Game Stats</h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-400">Turn:</span>
+                          <span className="text-xs text-emerald-400 capitalize">{currentTurn}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-400">Cards Left:</span>
+                          <span className="text-xs text-white">You: {playerDeck.length} | Opponent: {opponentCards.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-400">Fatigue:</span>
+                          <span className="text-xs text-amber-400">{fatigueDamage} Damage</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-400">Shards:</span>
+                          <span className="text-xs text-emerald-400">{playerData.shards}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </UICard>
+                </div>
+              </div>
+            </div>
+          </UICard>
+        );
+        
+      case 'end':
+        return (
+          <UICard className="glassmorphism border-emerald-500/30 h-[600px] flex flex-col">
+            <div className="flex flex-col items-center justify-center h-full p-6">
+              <div className="w-16 h-16 mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-4">Battle Complete</h2>
+              <div className="bg-black/30 rounded-md p-4 mb-6 w-full max-w-md">
+                <div className="text-center mb-4">
+                  <div className="text-sm text-gray-400 mb-1">Final Result</div>
+                  <div className="text-lg font-bold text-emerald-400">
+                    {playerHealth <= 0 ? 'Defeat' : opponentHealth <= 0 ? 'Victory!' : 'Draw'}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <div className="text-sm text-gray-400 mb-1">Your Health</div>
+                    <div className="text-lg font-bold">{playerHealth}/20</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400 mb-1">Opponent Health</div>
+                    <div className="text-lg font-bold">{opponentHealth}/20</div>
+                  </div>
+                </div>
+                <div className="text-center mb-4">
+                  <div className="text-sm text-gray-400 mb-1">Total Shards</div>
+                  <div className="text-3xl font-bold text-amber-400">{playerData.shards}</div>
+                </div>
+                <div className="bg-black/30 rounded p-3">
+                  <div className="text-sm text-gray-400 mb-1">Battle Log</div>
+                  <div className="max-h-32 overflow-y-auto text-xs text-gray-300">
+                    {battleLog.map((log, index) => (
+                      <p key={index} className="mb-1">{log}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex space-x-4 w-full max-w-md">
+                <Button onClick={backToRoomSelection} className="w-full bg-gradient-to-r from-emerald-400 to-teal-500">
+                  New Battle
+                </Button>
+                <Button onClick={openInventory} className="w-full bg-gradient-to-r from-amber-500 to-amber-600">
+                  View Inventory
+                </Button>
               </div>
             </div>
           </UICard>

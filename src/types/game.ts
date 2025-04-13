@@ -1,4 +1,3 @@
-
 export enum CardRarity {
   COMMON = "common",
   RARE = "rare",
@@ -50,6 +49,8 @@ export interface Card {
   specialEffect?: {
     description: string;
     effectType: 'BUFF' | 'DEBUFF' | 'SHIELD' | 'DRAIN';
+    type?: 'damage' | 'heal';  // Added for compatibility with existing code
+    value?: number;            // Added for compatibility with existing code
   };
 }
 
