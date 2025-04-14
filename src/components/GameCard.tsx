@@ -1,17 +1,19 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { Card as GameCardType } from '@/types/game';
-import { Shield, Zap, Sparkles } from 'lucide-react';
+import { Shield, Zap, Sparkles, Sword } from 'lucide-react';
 
 interface GameCardProps {
   card: GameCardType;
   showDetails?: boolean;
   onClick?: () => void;
   boosted?: boolean;
+  className?: string; // Added className prop
 }
 
-const GameCard: React.FC<GameCardProps> = ({ card, showDetails = false, onClick, boosted = false }) => {
+const GameCard: React.FC<GameCardProps> = ({ card, showDetails = false, onClick, boosted = false, className = '' }) => {
   const handleClick = () => {
     if (onClick) onClick();
   };
@@ -20,7 +22,8 @@ const GameCard: React.FC<GameCardProps> = ({ card, showDetails = false, onClick,
     <Card 
       className={`relative overflow-hidden transition-all duration-200 
         ${onClick ? 'cursor-pointer hover:scale-105' : ''} 
-        ${boosted ? 'border-amber-500' : ''}`}
+        ${boosted ? 'border-amber-500' : ''}
+        ${className}`}
       onClick={handleClick}
     >
       <CardContent className="p-3 flex flex-col items-start">

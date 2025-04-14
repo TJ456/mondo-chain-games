@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import GameCard from '@/components/GameCard';
 import { Card as GameCardType } from '@/types/game';
-import { Package } from 'lucide-react';
+import { Package, Shield, Zap } from 'lucide-react';
 
 interface PlayerInventoryProps {
   playerCards: GameCardType[];
