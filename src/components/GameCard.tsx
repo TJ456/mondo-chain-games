@@ -10,7 +10,7 @@ interface GameCardProps {
   showDetails?: boolean;
   onClick?: () => void;
   boosted?: boolean;
-  className?: string; // Added className prop
+  className?: string;
 }
 
 const GameCard: React.FC<GameCardProps> = ({ card, showDetails = false, onClick, boosted = false, className = '' }) => {

@@ -937,8 +937,11 @@ const Game = () => {
               
               <div className="mt-4">
                 <MonadBoostMechanic 
-                  boostActive={boostActive}
-                  boostDetails={boostDetails}
+                  playerMonadBalance={playerMonadBalance}
+                  onBoostActivate={handleBoostActivation}
+                  remainingTurns={boostDetails?.remainingTurns}
+                  boostPercentage={boostDetails?.effect}
+                  isActive={boostActive}
                 />
               </div>
             </div>

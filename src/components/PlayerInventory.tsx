@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import GameCard from '@/components/GameCard';
 import { Card as GameCardType } from '@/types/game';
-import { Package, Shield, Zap } from 'lucide-react';
+import { Package } from 'lucide-react';
 
 interface PlayerInventoryProps {
   playerCards: GameCardType[];
@@ -29,7 +29,11 @@ const PlayerInventory: React.FC<PlayerInventoryProps> = ({ playerCards, onClose,
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {playerCards.map((card) => (
                 <div key={card.id} className="transform hover:-translate-y-2 transition-transform">
-                  <GameCard card={card} showDetails={true} />
+                  <GameCard
+                    key={card.id}
+                    card={card}
+                    showDetails={true}
+                  />
                 </div>
               ))}
             </div>
