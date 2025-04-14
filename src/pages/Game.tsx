@@ -743,4 +743,24 @@ const Game = () => {
   const renderManaExplanation = () => (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger
+        <TooltipTrigger>
+          <div className="flex items-center cursor-help">
+            <Zap className="h-4 w-4 mr-1 text-amber-400" />
+            <span>Mana</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-sm">Mana is the energy required to play cards. It replenishes +1 each turn.</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
+  return (
+    <div>
+      {/* Render other components and logic */}
+    </div>
+  );
+};
+
+export default Game;
