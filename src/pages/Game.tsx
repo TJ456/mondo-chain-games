@@ -783,7 +783,7 @@ const Game = () => {
         {gameStatus === 'inventory' && (
           <PlayerInventory
             playerCards={allPlayerCards}
-            onBack={closeInventory}
+            onClose={closeInventory}
             onSelectDeck={selectDeckCards}
           />
         )}
@@ -855,7 +855,7 @@ const Game = () => {
               <div className="flex flex-col gap-2 mt-4">
                 <Button 
                   disabled={currentTurn !== 'player'} 
-                  onClick={endTurn}
+                  onClick={() => currentTurn === 'player' && endTurn('opponent')}
                 >
                   End Turn
                 </Button>
@@ -863,10 +863,7 @@ const Game = () => {
               
               <div className="mt-4">
                 <MonadBoostMechanic 
-                  playerMonadBalance={playerMonadBalance}
-                  onActivateBoost={(amount, effect, duration) => 
-                    handleBoostActivation(amount, effect, duration)
-                  }
+                  onActivateBoost={handleBoostActivation}
                   boostActive={boostActive}
                   boostDetails={boostDetails}
                 />
@@ -895,7 +892,6 @@ const Game = () => {
                         key={card.id}
                         card={card}
                         onClick={() => currentTurn === 'player' && playCard(card)}
-                        disabled={currentTurn !== 'player' || playerMana < card.mana}
                         boosted={card.boosted}
                       />
                     ))}
@@ -907,9 +903,8 @@ const Game = () => {
               
               <div className="mt-6">
                 <ShardManager
-                  playerShards={playerData.shards}
+                  player={playerData}
                   onRedeemShards={handleShardRedemption}
-                  dailyTrialsRemaining={playerData.dailyTrialsRemaining}
                 />
               </div>
             </div>

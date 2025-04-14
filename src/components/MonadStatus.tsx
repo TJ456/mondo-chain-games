@@ -1,10 +1,14 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { monadGameState, monadTransactions } from '@/data/gameData';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const MonadStatus: React.FC = () => {
+interface MonadStatusProps {
+  playerMonadBalance?: number;
+  isOnChain?: boolean;
+}
+
+const MonadStatus: React.FC<MonadStatusProps> = ({ playerMonadBalance, isOnChain }) => {
   const getStatusColor = () => {
     switch (monadGameState.networkStatus) {
       case 'connected':
@@ -111,6 +115,13 @@ const MonadStatus: React.FC = () => {
           </TooltipProvider>
         ))}
       </div>
+      
+      {playerMonadBalance !== undefined && (
+        <div className="mt-2 text-sm flex justify-between items-center">
+          <span className="text-gray-300">Your MONAD Balance:</span>
+          <span className="font-mono text-emerald-400 font-bold">{playerMonadBalance.toFixed(2)}</span>
+        </div>
+      )}
     </Card>
   );
 };

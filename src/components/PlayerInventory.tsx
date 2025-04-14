@@ -10,9 +10,10 @@ import { Package } from 'lucide-react';
 interface PlayerInventoryProps {
   playerCards: GameCardType[];
   onClose: () => void;
+  onSelectDeck: () => void;
 }
 
-const PlayerInventory: React.FC<PlayerInventoryProps> = ({ playerCards, onClose }) => {
+const PlayerInventory: React.FC<PlayerInventoryProps> = ({ playerCards, onClose, onSelectDeck }) => {
   return (
     <Card className="glassmorphism border-emerald-500/30 w-full max-w-4xl mx-auto">
       <CardHeader>
@@ -46,8 +47,11 @@ const PlayerInventory: React.FC<PlayerInventoryProps> = ({ playerCards, onClose 
         </ScrollArea>
       </CardContent>
       <CardFooter>
-        <Button className="w-full bg-gradient-to-r from-emerald-400 to-teal-500" onClick={onClose}>
-          Return to Game Room
+        <Button className="w-full bg-gradient-to-r from-emerald-400 to-teal-500" onClick={onSelectDeck}>
+          Select Cards & Return
+        </Button>
+        <Button variant="outline" className="w-full ml-2" onClick={onClose}>
+          Cancel
         </Button>
       </CardFooter>
     </Card>
