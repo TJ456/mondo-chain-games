@@ -757,8 +757,198 @@ const Game = () => {
   );
 
   return (
-    <div>
-      {/* Render other components and logic */}
+    <div className="container mx-auto px-4 py-8">
+      <Navigation />
+      
+      <div className="flex flex-col gap-8 mt-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-primary">MONAD Game Arena</h1>
+            <p className="text-muted-foreground">Battle with blockchain-powered cards</p>
+          </div>
+          
+          <MonadStatus 
+            playerMonadBalance={playerMonadBalance}
+            isOnChain={isOnChain}
+          />
+        </div>
+        
+        {gameStatus === 'room_select' && (
+          <GameRoomSelector 
+            onSelectDifficulty={handleSelectDifficulty}
+            onOpenInventory={openInventory}
+          />
+        )}
+        
+        {gameStatus === 'inventory' && (
+          <PlayerInventory
+            playerCards={allPlayerCards}
+            onBack={closeInventory}
+            onSelectDeck={selectDeckCards}
+          />
+        )}
+        
+        {gameStatus === 'waiting' && (
+          <div className="bg-card border rounded-lg shadow-lg p-8 flex flex-col items-center justify-center">
+            <h2 className="text-2xl font-bold mb-6">Ready to Battle?</h2>
+            <p className="text-center text-muted-foreground mb-6">
+              Your deck is ready. Challenge the AI in a battle of strategy and skill on the MONAD blockchain.
+            </p>
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={backToRoomSelection}>
+                Back
+              </Button>
+              <Button onClick={startGame}>
+                Start Battle
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {gameStatus === 'playing' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-card border rounded-lg shadow p-4">
+              <h2 className="text-xl font-bold mb-4">Opponent</h2>
+              <div className="flex justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-red-500" />
+                  <span>Health: {opponentHealth}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {renderManaExplanation()}
+                  <span>: {opponentMana}</span>
+                </div>
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold mb-2">Cards: {opponentCards.length}</h3>
+                {opponentCards.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {opponentCards.map(card => (
+                      <div key={card.id} className="bg-blue-900 rounded-md h-16 flex items-center justify-center">
+                        <span className="text-2xl">?</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No cards</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-card border rounded-lg shadow p-4">
+              <div className="mb-4 flex justify-between">
+                <h2 className="text-xl font-bold">Battle Arena</h2>
+                <div className="text-sm text-muted-foreground">
+                  Turn: {currentTurn === 'player' ? 'Your Turn' : 'Opponent\'s Turn'}
+                </div>
+              </div>
+              
+              <div className="bg-muted/20 rounded-md p-3 h-48 overflow-y-auto mb-4">
+                <h3 className="text-sm font-semibold mb-2">Battle Log</h3>
+                <div className="space-y-1">
+                  {battleLog.map((log, index) => (
+                    <p key={index} className="text-xs">{log}</p>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2 mt-4">
+                <Button 
+                  disabled={currentTurn !== 'player'} 
+                  onClick={endTurn}
+                >
+                  End Turn
+                </Button>
+              </div>
+              
+              <div className="mt-4">
+                <MonadBoostMechanic 
+                  playerMonadBalance={playerMonadBalance}
+                  onActivateBoost={(amount, effect, duration) => 
+                    handleBoostActivation(amount, effect, duration)
+                  }
+                  boostActive={boostActive}
+                  boostDetails={boostDetails}
+                />
+              </div>
+            </div>
+            
+            <div className="bg-card border rounded-lg shadow p-4">
+              <h2 className="text-xl font-bold mb-4">Your Cards</h2>
+              <div className="flex justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-green-500" />
+                  <span>Health: {playerHealth}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {renderManaExplanation()}
+                  <span>: {playerMana}</span>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold mb-2">Your Hand:</h3>
+                {playerDeck.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {playerDeck.map(card => (
+                      <GameCard
+                        key={card.id}
+                        card={card}
+                        onClick={() => currentTurn === 'player' && playCard(card)}
+                        disabled={currentTurn !== 'player' || playerMana < card.mana}
+                        boosted={card.boosted}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No cards in hand</p>
+                )}
+              </div>
+              
+              <div className="mt-6">
+                <ShardManager
+                  playerShards={playerData.shards}
+                  onRedeemShards={handleShardRedemption}
+                  dailyTrialsRemaining={playerData.dailyTrialsRemaining}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {gameStatus === 'end' && (
+          <div className="bg-card border rounded-lg shadow-lg p-8 flex flex-col items-center">
+            <h2 className="text-2xl font-bold mb-4">
+              {playerHealth > 0 ? 'Victory!' : 'Defeat!'}
+            </h2>
+            <p className="text-center text-muted-foreground mb-6">
+              {playerHealth > 0 
+                ? `You've won the battle and earned ${getShardReward()} shards!` 
+                : 'Better luck next time.'}
+            </p>
+            <div className="bg-muted/20 rounded-md p-4 mb-6 w-full max-w-md">
+              <h3 className="font-semibold mb-2">Battle Results</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Your Health:</span>
+                  <span>{playerHealth}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Opponent Health:</span>
+                  <span>{opponentHealth}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Difficulty:</span>
+                  <span>{aiDifficulty}</span>
+                </div>
+              </div>
+            </div>
+            <Button onClick={backToRoomSelection}>
+              Play Again
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
